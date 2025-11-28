@@ -1,0 +1,142 @@
+version: '3.9'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-service
+    ports:
+      - "9080:80"
+    volumes:
+      - ./html/nginx:/usr/share/nginx/html:ro
+      - nginx-logs:/var/log/nginx
+    networks:
+      - service-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  httpd:
+    image: httpd:2.4-alpine
+    container_name: httpd-service
+    ports:
+      - "9081:80"
+    volumes:
+      - ./html/httpd:/usr/local/apache2/htdocs:ro
+      - httpd-logs:/usr/local/apache2/logs
+    networks:
+      - service-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy-service
+    ports:
+      - "9082:80"
+    volumes:
+      - ./html/caddy:/usr/share/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - service-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  traefik:
+    image: traefik:latest
+    container_name: traefik-service
+    ports:
+      - "9088:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-data:/data
+      - traefik-logs:/var/log
+    networks:
+      - service-network
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  app:
+    image: python:3.11-alpine
+    container_name: app-service
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app:/app:ro
+      - app-logs:/var/log/app
+    working_dir: /app
+    command: python -m http.server 3000
+    networks:
+      - service-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+volumes:
+  nginx-logs:
+  httpd-logs:
+  caddy-data:
+  caddy-config:
+  traefik-data:
+  traefik-logs:
+  app-logs:
+
+networks:
+  service-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

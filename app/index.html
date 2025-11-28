@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5-Service Jenkins Pipeline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 1.1em;
+        }
+
+        .pulse {
+            width: 12px;
+            height: 12px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .service-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-align: center;
+        }
+
+        .service-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+
+        .service-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .service-card h2 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .service-port {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+
+        .service-card p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .service-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: transform 0.2s ease;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .service-link:hover {
+            transform: scale(1.05);
+        }
+
+        .docs-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .docs-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .doc-link {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 600;
+            transition: background 0.2s ease;
+            border-left: 4px solid #667eea;
+        }
+
+        .doc-link:hover {
+            background: #e8e8ff;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 5-Service Jenkins Pipeline</h1>
+            <p>Docker Microservices with CI/CD Automation</p>
+            <div class="status">
+                <div class="pulse"></div>
+                <span>All Services Online</span>
+            </div>
+        </div>
+
+        <div class="services-grid">
+            <div class="service-card">
+                <div class="service-icon">🌐</div>
+                <h2>Nginx</h2>
+                <div class="service-port">Port: 9080</div>
+                <p>High-performance web server and reverse proxy built on Alpine Linux</p>
+                <a href="http://localhost:9080" class="service-link">Access Nginx</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🔧</div>
+                <h2>Apache</h2>
+                <div class="service-port">Port: 9081</div>
+                <p>Classic HTTP server with full module support, lightweight Alpine version</p>
+                <a href="http://localhost:9081" class="service-link">Access Apache</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">📦</div>
+                <h2>Caddy</h2>
+                <div class="service-port">Port: 9082</div>
+                <p>Modern web server with automatic HTTPS and JSON API integration</p>
+                <a href="http://localhost:9082" class="service-link">Access Caddy</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">⚙️</div>
+                <h2>Traefik</h2>
+                <div class="service-port">Port: 9088</div>
+                <p>Dynamic reverse proxy and load balancer with real-time configuration</p>
+                <a href="http://localhost:9088" class="service-link">Dashboard</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🎯</div>
+                <h2>App Service</h2>
+                <div class="service-port">Port: 3000</div>
+                <p>Python application service running HTTP server with container support</p>
+                <a href="http://localhost:3000" class="service-link">Access App</a>
+            </div>
+        </div>
+
+        <div class="docs-section">
+            <h3>📚 Documentation & Resources</h3>
+            <div class="docs-grid">
+                <a href="README.md" class="doc-link">📖 README</a>
+                <a href="JENKINS-START-HERE.md" class="doc-link">⚡ Quick Start</a>
+                <a href="JENKINS-SETUP-STEPS.md" class="doc-link">📋 Setup Steps</a>
+                <a href="JENKINS-COMPLETE-GUIDE.md" class="doc-link">📚 Full Guide</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🎊 Deployed with Jenkins CI/CD | Docker Compose | Microservices Architecture</p>
+            <p style="margin-top: 10px;">GitHub: <strong>ItsAnurag27/5-service-jenkins-pipeline</strong></p>
+        </div>
+    </div>
+</body>
+</html>
