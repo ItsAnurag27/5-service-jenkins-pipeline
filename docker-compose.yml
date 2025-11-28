@@ -2,12 +2,14 @@ version: '3.9'
 
 services:
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: services/nginx/Dockerfile
+    image: ${DOCKER_REPO}:nginx
     container_name: nginx-service
     ports:
       - "9080:80"
     volumes:
-      - ./html/nginx:/usr/share/nginx/html:ro
       - nginx-logs:/var/log/nginx
     networks:
       - service-network
@@ -25,12 +27,14 @@ services:
         max-file: "3"
 
   httpd:
-    image: httpd:2.4-alpine
+    build:
+      context: .
+      dockerfile: services/httpd/Dockerfile
+    image: ${DOCKER_REPO}:httpd
     container_name: httpd-service
     ports:
       - "9081:80"
     volumes:
-      - ./html/httpd:/usr/local/apache2/htdocs:ro
       - httpd-logs:/usr/local/apache2/logs
     networks:
       - service-network
@@ -48,12 +52,14 @@ services:
         max-file: "3"
 
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: .
+      dockerfile: services/caddy/Dockerfile
+    image: ${DOCKER_REPO}:caddy
     container_name: caddy-service
     ports:
       - "9082:80"
     volumes:
-      - ./html/caddy:/usr/share/caddy:ro
       - caddy-data:/data
       - caddy-config:/config
     networks:
@@ -72,7 +78,10 @@ services:
         max-file: "3"
 
   traefik:
-    image: traefik:latest
+    build:
+      context: .
+      dockerfile: services/traefik/Dockerfile
+    image: ${DOCKER_REPO}:traefik
     container_name: traefik-service
     ports:
       - "9088:8080"
@@ -101,15 +110,15 @@ services:
         max-file: "3"
 
   app:
-    image: python:3.11-alpine
+    build:
+      context: .
+      dockerfile: services/app/Dockerfile
+    image: ${DOCKER_REPO}:app
     container_name: app-service
     ports:
       - "3000:3000"
     volumes:
-      - ./app:/app:ro
       - app-logs:/var/log/app
-    working_dir: /app
-    command: python -m http.server 3000
     networks:
       - service-network
     healthcheck:

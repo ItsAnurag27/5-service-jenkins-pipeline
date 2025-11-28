@@ -45,16 +45,16 @@ pipeline {
             steps {
                 echo '🏷️  Tagging images...'
                 sh '''
-                    docker tag nginx:alpine ${DOCKER_REPO}:nginx-${IMAGE_TAG}
-                    docker tag nginx:alpine ${DOCKER_REPO}:nginx-latest
-                    docker tag httpd:2.4-alpine ${DOCKER_REPO}:httpd-${IMAGE_TAG}
-                    docker tag httpd:2.4-alpine ${DOCKER_REPO}:httpd-latest
-                    docker tag caddy:2-alpine ${DOCKER_REPO}:caddy-${IMAGE_TAG}
-                    docker tag caddy:2-alpine ${DOCKER_REPO}:caddy-latest
-                    docker tag traefik:latest ${DOCKER_REPO}:traefik-${IMAGE_TAG}
-                    docker tag traefik:latest ${DOCKER_REPO}:traefik-latest
-                    docker tag python:3.11-alpine ${DOCKER_REPO}:app-${IMAGE_TAG}
-                    docker tag python:3.11-alpine ${DOCKER_REPO}:app-latest
+                    docker tag ${DOCKER_REPO}:nginx ${DOCKER_REPO}:nginx-${IMAGE_TAG}
+                    docker tag ${DOCKER_REPO}:nginx ${DOCKER_REPO}:nginx-latest
+                    docker tag ${DOCKER_REPO}:httpd ${DOCKER_REPO}:httpd-${IMAGE_TAG}
+                    docker tag ${DOCKER_REPO}:httpd ${DOCKER_REPO}:httpd-latest
+                    docker tag ${DOCKER_REPO}:caddy ${DOCKER_REPO}:caddy-${IMAGE_TAG}
+                    docker tag ${DOCKER_REPO}:caddy ${DOCKER_REPO}:caddy-latest
+                    docker tag ${DOCKER_REPO}:traefik ${DOCKER_REPO}:traefik-${IMAGE_TAG}
+                    docker tag ${DOCKER_REPO}:traefik ${DOCKER_REPO}:traefik-latest
+                    docker tag ${DOCKER_REPO}:app ${DOCKER_REPO}:app-${IMAGE_TAG}
+                    docker tag ${DOCKER_REPO}:app ${DOCKER_REPO}:app-latest
                 '''
             }
         }
