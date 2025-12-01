@@ -104,14 +104,7 @@ pipeline {
                             Write-Host "[OK] Images transferred to EC2"
                             Write-Host "[*] Loading images on EC2..."
                             
-                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" @"
-                                echo "Loading Docker images..."
-                                for img in ~/docker_images/*.tar; do
-                                    echo "Loading \$img..."
-                                    docker load -i "\$img"
-                                done
-                                echo "All images loaded successfully"
-"@
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "cd ~/docker_images && for img in *.tar; do echo Loading \$img && docker load -i \$img; done && echo All images loaded successfully"
                             
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] All images loaded on EC2 successfully"
