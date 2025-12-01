@@ -13,9 +13,6 @@ pipeline {
         DOCKER_PASSWORD = "${DOCKER_HUB_CREDS_PSW}"
         DOCKER_REPO = "${DOCKER_USERNAME}/service-pipeline"
         IMAGE_TAG = "${BUILD_NUMBER}"
-        EC2_IP = credentials('ec2-ip')
-        EC2_USER = "ec2-user"   
-        EC2_KEY = credentials('ec2-ssh-key')
     }
 
     stages {
