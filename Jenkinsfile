@@ -68,6 +68,10 @@ pipeline {
                             $dockerRepo = $env:DOCKER_REPO
                             $tempDir = "C:/temp_docker_images"
                             
+                            # Fix SSH key permissions
+                            Write-Host "[*] Fixing SSH key permissions..."
+                            icacls "$sshKey" /inheritance:r /grant:r "$env:USERNAME`:F" | Out-Null
+                            
                             Write-Host "[*] Creating temporary directory for Docker images..."
                             if (!(Test-Path $tempDir)) {
                                 New-Item -ItemType Directory -Path $tempDir | Out-Null
