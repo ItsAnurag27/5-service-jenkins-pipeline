@@ -8,7 +8,7 @@ pipeline {
     }
 
     environment {
-        DOCKER_REPO = "ghcr.io/ItsAnurag27/service-pipeline"
+        DOCKER_REPO = "ghcr.io/itsanurag27/service-pipeline"
         IMAGE_TAG = "${BUILD_NUMBER}"
         EC2_USER = "ec2-user"
         EC2_IP = "98.82.113.29"
@@ -62,7 +62,7 @@ pipeline {
                 script {
                     powershell '''
                         Write-Host "[*] Logging in to GitHub Container Registry..."
-                        $env:GITHUB_TOKEN | docker login ghcr.io -u ItsAnurag27 --password-stdin
+                        $env:GITHUB_TOKEN | docker login ghcr.io -u itsanurag27 --password-stdin
                         
                         if ($LASTEXITCODE -ne 0) {
                             throw "GHCR login failed"
