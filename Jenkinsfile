@@ -70,7 +70,17 @@ pipeline {
                             
                             # Fix SSH key permissions
                             Write-Host "[*] Fixing SSH key permissions..."
-                            icacls "$sshKey" /inheritance:r /grant:r "$env:USERNAME`:F" | Out-Null
+                            try {
+                                # Remove all inherited permissions and ACEs
+                                icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
+                                # Grant full control to SYSTEM
+                                icacls "$sshKey" /grant:r "SYSTEM`:`(F`)" 2>&1 | Out-Null
+                                # Grant full control to Administrators
+                                icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
+                                Write-Host "[OK] SSH key permissions fixed"
+                            } catch {
+                                Write-Host "[WARNING] Could not fix permissions, continuing anyway: $_"
+                            }
                             
                             Write-Host "[*] Creating temporary directory for Docker images..."
                             if (!(Test-Path $tempDir)) {
