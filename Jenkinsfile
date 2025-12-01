@@ -61,11 +61,20 @@ pipeline {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         powershell '''
+                            Write-Host "[*] Username: $env:DOCKER_USERNAME"
+                            Write-Host "[*] Password length: $($env:DOCKER_PASSWORD.Length) characters"
                             Write-Host "[*] Logging in to Docker Hub..."
+                            
                             $env:DOCKER_PASSWORD | docker login -u $env:DOCKER_USERNAME --password-stdin
                             
                             if ($LASTEXITCODE -ne 0) {
-                                throw "Docker Hub login failed!"
+                                Write-Host "[ERROR] Docker login failed with exit code: $LASTEXITCODE"
+                                Write-Host "[ERROR] Response: $result"
+                                Write-Host "[*] Please verify your Docker Hub credentials:"
+                                Write-Host "[*]   - Go to Jenkins > Manage Credentials"
+                                Write-Host "[*]   - Find 'docker-hub-creds'"
+                                Write-Host "[*]   - Update with correct username and password/token"
+                                throw "Docker Hub login failed - check credentials in Jenkins"
                             }
                             
                             Write-Host "[OK] Docker Hub login successful"
