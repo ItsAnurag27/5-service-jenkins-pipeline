@@ -8,14 +8,10 @@ pipeline {
     }
 
     environment {
-        DOCKER_HUB_CREDS = credentials('docker-hub-creds')
-        DOCKER_USERNAME = "${DOCKER_HUB_CREDS_USR}"
-        DOCKER_PASSWORD = "${DOCKER_HUB_CREDS_PSW}"
-        DOCKER_REPO = "${DOCKER_USERNAME}/service-pipeline"
+        DOCKER_REPO = "itsanurag27/service-pipeline"
         IMAGE_TAG = "${BUILD_NUMBER}"
         EC2_USER = "ec2-user"
         EC2_IP = "98.82.113.29"
-        EC2_SSH_KEY = credentials('jenkins-key')
     }
 
     stages {
@@ -63,24 +59,63 @@ pipeline {
             steps {
                 echo '📤 Pushing images to Docker Hub...'
                 script {
-                    powershell '''
-                        # Login to Docker Hub using PowerShell pipe
-                        $env:DOCKER_PASSWORD | docker login -u $env:DOCKER_USERNAME --password-stdin
-                        
-                        # Push all images
-                        docker push "${env:DOCKER_REPO}:nginx-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:nginx-latest"
-                        docker push "${env:DOCKER_REPO}:httpd-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:httpd-latest"
-                        docker push "${env:DOCKER_REPO}:caddy-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:caddy-latest"
-                        docker push "${env:DOCKER_REPO}:traefik-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:traefik-latest"
-                        docker push "${env:DOCKER_REPO}:app-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:app-latest"
-                        
-                        docker logout
-                    '''
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        powershell '''
+                            # Verify Docker Hub repository exists, create if needed
+                            Write-Host "🔍 Checking if Docker Hub repository exists..."
+                            $token = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("${env:DOCKER_USERNAME}:${env:DOCKER_PASSWORD}"))
+                            $repoCheck = curl -s -H "Authorization: Basic $token" "https://hub.docker.com/v2/repositories/${env:DOCKER_USERNAME}/service-pipeline/"
+                            
+                            if ($repoCheck -like "*"*objects"*") {
+                                Write-Host "✅ Repository already exists"
+                            } else {
+                                Write-Host "⚠️  Repository not found, attempting to create..."
+                                $repoPayload = @{
+                                    "name" = "service-pipeline"
+                                    "description" = "Multi-service pipeline repository"
+                                    "is_private" = $false
+                                } | ConvertTo-Json
+                                
+                                $createRepo = curl -s -X POST `
+                                    -H "Authorization: Basic $token" `
+                                    -H "Content-Type: application/json" `
+                                    -d $repoPayload `
+                                    "https://hub.docker.com/v2/repositories/"
+                                
+                                if ($createRepo -like "*created*" -or $createRepo -like "*object*") {
+                                    Write-Host "✅ Repository created successfully"
+                                } else {
+                                    Write-Host "⚠️  Repository may already exist or creation skipped"
+                                }
+                            }
+                            
+                            # Login to Docker Hub using PowerShell pipe
+                            Write-Host "🔐 Logging in to Docker Hub..."
+                            $env:DOCKER_PASSWORD | docker login -u $env:DOCKER_USERNAME --password-stdin
+                            
+                            if ($LASTEXITCODE -eq 0) {
+                                Write-Host "✅ Docker Hub login successful"
+                            } else {
+                                throw "Docker Hub login failed!"
+                            }
+                            
+                            # Push all images
+                            Write-Host "📤 Pushing all images to Docker Hub..."
+                            docker push "${env:DOCKER_REPO}:nginx-${env:IMAGE_TAG}"
+                            docker push "${env:DOCKER_REPO}:nginx-latest"
+                            docker push "${env:DOCKER_REPO}:httpd-${env:IMAGE_TAG}"
+                            docker push "${env:DOCKER_REPO}:httpd-latest"
+                            docker push "${env:DOCKER_REPO}:caddy-${env:IMAGE_TAG}"
+                            docker push "${env:DOCKER_REPO}:caddy-latest"
+                            docker push "${env:DOCKER_REPO}:traefik-${env:IMAGE_TAG}"
+                            docker push "${env:DOCKER_REPO}:traefik-latest"
+                            docker push "${env:DOCKER_REPO}:app-${env:IMAGE_TAG}"
+                            docker push "${env:DOCKER_REPO}:app-latest"
+                            
+                            Write-Host "✅ All images pushed successfully"
+                            docker logout
+                        '''
+                    }
                 }
             }
         }
@@ -96,14 +131,12 @@ pipeline {
             steps {
                 echo '🚀 Deploying to EC2...'
                 script {
-                    withCredentials([file(credentialsId: 'jenkins-key', variable: 'SSH_KEY_FILE')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
                             # Variables
                             $sshKey = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
                             $ec2Ip = $env:EC2_IP
-                            $dockerUser = $env:DOCKER_USERNAME
-                            $dockerPass = $env:DOCKER_PASSWORD
                             $dockerRepo = $env:DOCKER_REPO
                             $imageTag = $env:IMAGE_TAG
                             
@@ -141,7 +174,6 @@ IMAGE_TAG=$imageTag
 ENVEOF
                                 
                                 # Login to Docker Hub and pull images
-                                echo "$dockerPass" | docker login -u "$dockerUser" --password-stdin
                                 docker-compose pull
                                 
                                 # Redeploy services
@@ -153,7 +185,14 @@ ENVEOF
 "@
                             
                             # Execute SSH command
+                            Write-Host "🔐 Connecting to EC2 via SSH..."
                             ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" $sshCommand
+                            
+                            if ($LASTEXITCODE -eq 0) {
+                                Write-Host "✅ EC2 deployment completed successfully"
+                            } else {
+                                Write-Host "❌ EC2 deployment encountered an issue"
+                            }
                         '''
                     }
                 }
@@ -164,7 +203,7 @@ ENVEOF
             steps {
                 echo '✅ Verifying EC2 deployment...'
                 script {
-                    withCredentials([file(credentialsId: 'jenkins-key', variable: 'SSH_KEY_FILE')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
                             $sshKey = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
