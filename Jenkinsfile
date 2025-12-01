@@ -8,10 +8,11 @@ pipeline {
     }
 
     environment {
-        DOCKER_REPO = "itsanurag27/service-pipeline"
+        DOCKER_REPO = "ghcr.io/ItsAnurag27/service-pipeline"
         IMAGE_TAG = "${BUILD_NUMBER}"
         EC2_USER = "ec2-user"
         EC2_IP = "98.82.113.29"
+        GITHUB_TOKEN = credentials('github-token')
     }
 
     stages {
@@ -55,37 +56,35 @@ pipeline {
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('Push to GitHub Container Registry') {
             steps {
-                echo 'Pushing images to Docker Hub...'
+                echo 'Pushing images to GitHub Container Registry...'
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        powershell '''
-                            Write-Host "[*] Logging in to Docker Hub..."
-                            $env:DOCKER_PASSWORD | docker login -u $env:DOCKER_USERNAME --password-stdin
-                            
-                            if ($LASTEXITCODE -ne 0) {
-                                throw "Docker Hub login failed"
-                            }
-                            
-                            Write-Host "[OK] Docker Hub login successful"
-                            Write-Host "[*] Pushing all images to Docker Hub..."
-                            
-                            docker push "${env:DOCKER_REPO}:nginx-${env:IMAGE_TAG}"
-                            docker push "${env:DOCKER_REPO}:nginx-latest"
-                            docker push "${env:DOCKER_REPO}:httpd-${env:IMAGE_TAG}"
-                            docker push "${env:DOCKER_REPO}:httpd-latest"
-                            docker push "${env:DOCKER_REPO}:caddy-${env:IMAGE_TAG}"
-                            docker push "${env:DOCKER_REPO}:caddy-latest"
-                            docker push "${env:DOCKER_REPO}:traefik-${env:IMAGE_TAG}"
-                            docker push "${env:DOCKER_REPO}:traefik-latest"
-                            docker push "${env:DOCKER_REPO}:app-${env:IMAGE_TAG}"
-                            docker push "${env:DOCKER_REPO}:app-latest"
-                            
-                            Write-Host "[OK] All images pushed successfully"
-                            docker logout
-                        '''
-                    }
+                    powershell '''
+                        Write-Host "[*] Logging in to GitHub Container Registry..."
+                        $env:GITHUB_TOKEN | docker login ghcr.io -u ItsAnurag27 --password-stdin
+                        
+                        if ($LASTEXITCODE -ne 0) {
+                            throw "GHCR login failed"
+                        }
+                        
+                        Write-Host "[OK] GHCR login successful"
+                        Write-Host "[*] Pushing all images to GHCR..."
+                        
+                        docker push "${env:DOCKER_REPO}:nginx-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:nginx-latest"
+                        docker push "${env:DOCKER_REPO}:httpd-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:httpd-latest"
+                        docker push "${env:DOCKER_REPO}:caddy-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:caddy-latest"
+                        docker push "${env:DOCKER_REPO}:traefik-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:traefik-latest"
+                        docker push "${env:DOCKER_REPO}:app-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:app-latest"
+                        
+                        Write-Host "[OK] All images pushed to GHCR successfully"
+                        docker logout ghcr.io
+                    '''
                 }
             }
         }
@@ -195,7 +194,7 @@ ENVEOF
 
     post {
         success {
-            echo "Pipeline succeeded! Images pushed to Docker Hub."
+            echo "Pipeline succeeded! Images pushed to GitHub Container Registry."
         }
         failure {
             echo "Pipeline failed. Check logs for details."
