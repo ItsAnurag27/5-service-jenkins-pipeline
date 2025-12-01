@@ -41,16 +41,18 @@ pipeline {
             steps {
                 echo 'Tagging images...'
                 powershell '''
-                    docker tag $env:DOCKER_REPO:nginx $env:DOCKER_REPO:nginx-$env:IMAGE_TAG
-                    docker tag $env:DOCKER_REPO:nginx $env:DOCKER_REPO:nginx-latest
-                    docker tag $env:DOCKER_REPO:httpd $env:DOCKER_REPO:httpd-$env:IMAGE_TAG
-                    docker tag $env:DOCKER_REPO:httpd $env:DOCKER_REPO:httpd-latest
-                    docker tag $env:DOCKER_REPO:caddy $env:DOCKER_REPO:caddy-$env:IMAGE_TAG
-                    docker tag $env:DOCKER_REPO:caddy $env:DOCKER_REPO:caddy-latest
-                    docker tag $env:DOCKER_REPO:traefik $env:DOCKER_REPO:traefik-$env:IMAGE_TAG
-                    docker tag $env:DOCKER_REPO:traefik $env:DOCKER_REPO:traefik-latest
-                    docker tag $env:DOCKER_REPO:app $env:DOCKER_REPO:app-$env:IMAGE_TAG
-                    docker tag $env:DOCKER_REPO:app $env:DOCKER_REPO:app-latest
+                    $repo = $env:DOCKER_REPO
+                    $tag = $env:IMAGE_TAG
+                    docker tag "${repo}:nginx" "${repo}:nginx-${tag}"
+                    docker tag "${repo}:nginx" "${repo}:nginx-latest"
+                    docker tag "${repo}:httpd" "${repo}:httpd-${tag}"
+                    docker tag "${repo}:httpd" "${repo}:httpd-latest"
+                    docker tag "${repo}:caddy" "${repo}:caddy-${tag}"
+                    docker tag "${repo}:caddy" "${repo}:caddy-latest"
+                    docker tag "${repo}:traefik" "${repo}:traefik-${tag}"
+                    docker tag "${repo}:traefik" "${repo}:traefik-latest"
+                    docker tag "${repo}:app" "${repo}:app-${tag}"
+                    docker tag "${repo}:app" "${repo}:app-latest"
                 '''
             }
         }
