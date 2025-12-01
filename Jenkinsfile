@@ -63,18 +63,22 @@ pipeline {
             steps {
                 echo '📤 Pushing images to Docker Hub...'
                 script {
-                    bat '''
-                        echo %DOCKER_PASSWORD% | docker login -u %DOCKER_USERNAME% --password-stdin
-                        docker push %DOCKER_REPO%:nginx-%IMAGE_TAG%
-                        docker push %DOCKER_REPO%:nginx-latest
-                        docker push %DOCKER_REPO%:httpd-%IMAGE_TAG%
-                        docker push %DOCKER_REPO%:httpd-latest
-                        docker push %DOCKER_REPO%:caddy-%IMAGE_TAG%
-                        docker push %DOCKER_REPO%:caddy-latest
-                        docker push %DOCKER_REPO%:traefik-%IMAGE_TAG%
-                        docker push %DOCKER_REPO%:traefik-latest
-                        docker push %DOCKER_REPO%:app-%IMAGE_TAG%
-                        docker push %DOCKER_REPO%:app-latest
+                    powershell '''
+                        # Login to Docker Hub using PowerShell pipe
+                        $env:DOCKER_PASSWORD | docker login -u $env:DOCKER_USERNAME --password-stdin
+                        
+                        # Push all images
+                        docker push "${env:DOCKER_REPO}:nginx-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:nginx-latest"
+                        docker push "${env:DOCKER_REPO}:httpd-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:httpd-latest"
+                        docker push "${env:DOCKER_REPO}:caddy-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:caddy-latest"
+                        docker push "${env:DOCKER_REPO}:traefik-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:traefik-latest"
+                        docker push "${env:DOCKER_REPO}:app-${env:IMAGE_TAG}"
+                        docker push "${env:DOCKER_REPO}:app-latest"
+                        
                         docker logout
                     '''
                 }
@@ -91,52 +95,67 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo '🚀 Deploying to EC2...'
-                sshagent(['jenkins-key']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} << 'EOF'
-                            # Update system
-                            sudo yum update -y
+                script {
+                    withCredentials([file(credentialsId: 'jenkins-key', variable: 'SSH_KEY_FILE')]) {
+                        powershell '''
+                            # Variables
+                            $sshKey = $env:SSH_KEY_FILE
+                            $ec2User = $env:EC2_USER
+                            $ec2Ip = $env:EC2_IP
+                            $dockerUser = $env:DOCKER_USERNAME
+                            $dockerPass = $env:DOCKER_PASSWORD
+                            $dockerRepo = $env:DOCKER_REPO
+                            $imageTag = $env:IMAGE_TAG
                             
-                            # Install Docker if not present
-                            sudo yum install -y docker git
-                            sudo systemctl start docker
-                            sudo systemctl enable docker
-                            sudo usermod -aG docker ${EC2_USER}
+                            Write-Host "🔐 Deploying to EC2 at $ec2Ip as $ec2User..."
                             
-                            # Install Docker Compose
-                            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                            sudo chmod +x /usr/local/bin/docker-compose
-                            
-                            # Clone or update repository
-                            if [ -d ~/5-service-jenkins-pipeline ]; then
-                                cd ~/5-service-jenkins-pipeline
-                                git pull origin main
-                            else
-                                cd ~
-                                git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git
-                                cd 5-service-jenkins-pipeline
-                            fi
-                            
-                            # Create .env file for docker-compose
-                            cat > .env << 'ENVEOF'
-DOCKER_REPO=${DOCKER_USERNAME}/service-pipeline
-IMAGE_TAG=${IMAGE_TAG}
+                            # SSH into EC2 and execute deployment commands
+                            $sshCommand = @"
+                                # Update system
+                                sudo yum update -y
+                                
+                                # Install Docker
+                                sudo yum install -y docker git
+                                sudo systemctl start docker
+                                sudo systemctl enable docker
+                                sudo usermod -aG docker $ec2User
+                                
+                                # Install Docker Compose
+                                sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)" -o /usr/local/bin/docker-compose
+                                sudo chmod +x /usr/local/bin/docker-compose
+                                
+                                # Clone or update repository
+                                if [ -d ~/5-service-jenkins-pipeline ]; then
+                                    cd ~/5-service-jenkins-pipeline
+                                    git pull origin main
+                                else
+                                    cd ~
+                                    git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git
+                                    cd 5-service-jenkins-pipeline
+                                fi
+                                
+                                # Create .env file
+                                cat > .env << 'ENVEOF'
+DOCKER_REPO=$dockerRepo
+IMAGE_TAG=$imageTag
 ENVEOF
+                                
+                                # Login to Docker Hub and pull images
+                                echo "$dockerPass" | docker login -u "$dockerUser" --password-stdin
+                                docker-compose pull
+                                
+                                # Redeploy services
+                                docker-compose down
+                                docker-compose up -d
+                                docker-compose ps
+                                
+                                echo "✅ EC2 Deployment completed!"
+"@
                             
-                            # Pull latest images from Docker Hub
-                            docker login -u ${DOCKER_USERNAME} --password-stdin <<< "${DOCKER_PASSWORD}"
-                            docker-compose pull
-                            
-                            # Stop old containers and start new ones
-                            docker-compose down
-                            docker-compose up -d
-                            
-                            # Verify services are running
-                            docker-compose ps
-                            
-                            echo "✅ Deployment to EC2 completed!"
-EOF
-                    '''
+                            # Execute SSH command
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" $sshCommand
+                        '''
+                    }
                 }
             }
         }
@@ -144,17 +163,26 @@ EOF
         stage('Verify EC2 Deployment') {
             steps {
                 echo '✅ Verifying EC2 deployment...'
-                sshagent(['jenkins-key']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} << 'EOF'
-                            echo "Checking service status..."
-                            curl -s http://localhost:3000 && echo "✅ App service running" || echo "❌ App service down"
-                            curl -s http://localhost:9080 && echo "✅ Nginx running" || echo "❌ Nginx down"
-                            curl -s http://localhost:9081 && echo "✅ Apache running" || echo "❌ Apache down"
-                            curl -s http://localhost:9082 && echo "✅ Caddy running" || echo "❌ Caddy down"
-                            curl -s http://localhost:9088 && echo "✅ Traefik running" || echo "❌ Traefik down"
-EOF
-                    '''
+                script {
+                    withCredentials([file(credentialsId: 'jenkins-key', variable: 'SSH_KEY_FILE')]) {
+                        powershell '''
+                            $sshKey = $env:SSH_KEY_FILE
+                            $ec2User = $env:EC2_USER
+                            $ec2Ip = $env:EC2_IP
+                            
+                            Write-Host "🔍 Checking service status on $ec2Ip..."
+                            
+                            # SSH and check services
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" @"
+                                echo "Verifying services..."
+                                curl -s http://localhost:3000 > /dev/null && echo "✅ App service running on port 3000" || echo "❌ App service DOWN"
+                                curl -s http://localhost:9080 > /dev/null && echo "✅ Nginx running on port 9080" || echo "❌ Nginx DOWN"
+                                curl -s http://localhost:9081 > /dev/null && echo "✅ Apache running on port 9081" || echo "❌ Apache DOWN"
+                                curl -s http://localhost:9082 > /dev/null && echo "✅ Caddy running on port 9082" || echo "❌ Caddy DOWN"
+                                curl -s http://localhost:9088 > /dev/null && echo "✅ Traefik running on port 9088" || echo "❌ Traefik DOWN"
+"@
+                        '''
+                    }
                 }
             }
         }
