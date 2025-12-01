@@ -8,11 +8,10 @@ pipeline {
     }
 
     environment {
-        DOCKER_REPO = "ghcr.io/itsanurag27/service-pipeline"
+        DOCKER_REPO = "service-pipeline"
         IMAGE_TAG = "${BUILD_NUMBER}"
         EC2_USER = "ec2-user"
         EC2_IP = "98.82.113.29"
-        GITHUB_TOKEN = credentials('github-token')
     }
 
     stages {
@@ -56,35 +55,60 @@ pipeline {
             }
         }
 
-        stage('Push to GitHub Container Registry') {
+        stage('Push to EC2') {
             steps {
-                echo 'Pushing images to GitHub Container Registry...'
+                echo 'Pushing Docker images directly to EC2...'
                 script {
-                    powershell '''
-                        Write-Host "[*] Logging in to GitHub Container Registry..."
-                        $env:GITHUB_TOKEN | docker login ghcr.io -u itsanurag27 --password-stdin
-                        
-                        if ($LASTEXITCODE -ne 0) {
-                            throw "GHCR login failed"
-                        }
-                        
-                        Write-Host "[OK] GHCR login successful"
-                        Write-Host "[*] Pushing all images to GHCR..."
-                        
-                        docker push "${env:DOCKER_REPO}:nginx-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:nginx-latest"
-                        docker push "${env:DOCKER_REPO}:httpd-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:httpd-latest"
-                        docker push "${env:DOCKER_REPO}:caddy-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:caddy-latest"
-                        docker push "${env:DOCKER_REPO}:traefik-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:traefik-latest"
-                        docker push "${env:DOCKER_REPO}:app-${env:IMAGE_TAG}"
-                        docker push "${env:DOCKER_REPO}:app-latest"
-                        
-                        Write-Host "[OK] All images pushed to GHCR successfully"
-                        docker logout ghcr.io
-                    '''
+                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
+                        powershell '''
+                            $sshKey = $env:SSH_KEY_FILE
+                            $ec2User = $env:EC2_USER
+                            $ec2Ip = $env:EC2_IP
+                            $imageTag = $env:IMAGE_TAG
+                            $dockerRepo = $env:DOCKER_REPO
+                            $tempDir = "C:\temp_docker_images"
+                            
+                            Write-Host "[*] Creating temporary directory for Docker images..."
+                            if (!(Test-Path $tempDir)) {
+                                New-Item -ItemType Directory -Path $tempDir | Out-Null
+                            }
+                            
+                            Write-Host "[*] Saving Docker images to tar files..."
+                            docker save "${dockerRepo}:nginx-${imageTag}" -o "$tempDir\nginx-${imageTag}.tar"
+                            docker save "${dockerRepo}:httpd-${imageTag}" -o "$tempDir\httpd-${imageTag}.tar"
+                            docker save "${dockerRepo}:caddy-${imageTag}" -o "$tempDir\caddy-${imageTag}.tar"
+                            docker save "${dockerRepo}:traefik-${imageTag}" -o "$tempDir\traefik-${imageTag}.tar"
+                            docker save "${dockerRepo}:app-${imageTag}" -o "$tempDir\app-${imageTag}.tar"
+                            
+                            Write-Host "[OK] Docker images saved"
+                            Write-Host "[*] Transferring images to EC2..."
+                            
+                            # Transfer images via SCP
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "mkdir -p ~/docker_images"
+                            scp -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$tempDir\*.tar" "$ec2User@$ec2Ip`:~/docker_images/"
+                            
+                            Write-Host "[OK] Images transferred to EC2"
+                            Write-Host "[*] Loading images on EC2..."
+                            
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" @"
+                                echo "Loading Docker images..."
+                                for img in ~/docker_images/*.tar; do
+                                    echo "Loading \$img..."
+                                    docker load -i "\$img"
+                                done
+                                echo "All images loaded successfully"
+"@
+                            
+                            if ($LASTEXITCODE -eq 0) {
+                                Write-Host "[OK] All images loaded on EC2 successfully"
+                                Remove-Item "$tempDir\*.tar" -Force
+                                Write-Host "[OK] Temporary files cleaned up"
+                            } else {
+                                Write-Host "[ERROR] Failed to load images on EC2"
+                                exit 1
+                            }
+                        '''
+                    }
                 }
             }
         }
@@ -98,14 +122,13 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                echo 'Deploying to EC2...'
+                echo 'Deploying services to EC2...'
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
                             $sshKey = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
                             $ec2Ip = $env:EC2_IP
-                            $dockerRepo = $env:DOCKER_REPO
                             $imageTag = $env:IMAGE_TAG
                             
                             Write-Host "[*] Deploying to EC2 at $ec2Ip as $ec2User..."
@@ -134,14 +157,50 @@ pipeline {
                                     cd 5-service-jenkins-pipeline
                                 fi
                                 
-                                # Create .env file
-                                cat > .env << 'ENVEOF'
-DOCKER_REPO=$dockerRepo
-IMAGE_TAG=$imageTag
-ENVEOF
-                                
-                                # Login to Docker Hub and pull images
-                                docker-compose pull
+                                # Create docker-compose.yml with local images
+                                cat > docker-compose.yml << 'COMPOSEEOF'
+version: '3.8'
+services:
+  nginx:
+    image: service-pipeline:nginx-${imageTag}
+    ports:
+      - "9080:80"
+    networks:
+      - service-net
+
+  httpd:
+    image: service-pipeline:httpd-${imageTag}
+    ports:
+      - "9081:80"
+    networks:
+      - service-net
+
+  caddy:
+    image: service-pipeline:caddy-${imageTag}
+    ports:
+      - "9082:80"
+    networks:
+      - service-net
+
+  traefik:
+    image: service-pipeline:traefik-${imageTag}
+    ports:
+      - "8080:8080"
+      - "9088:80"
+    networks:
+      - service-net
+
+  app:
+    image: service-pipeline:app-${imageTag}
+    ports:
+      - "3000:3000"
+    networks:
+      - service-net
+
+networks:
+  service-net:
+    driver: bridge
+COMPOSEEOF
                                 
                                 # Redeploy services
                                 docker-compose down
@@ -194,7 +253,7 @@ ENVEOF
 
     post {
         success {
-            echo "Pipeline succeeded! Images pushed to GitHub Container Registry."
+            echo "Pipeline succeeded! Images deployed directly to EC2."
         }
         failure {
             echo "Pipeline failed. Check logs for details."
