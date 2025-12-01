@@ -15,7 +15,7 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         EC2_IP = credentials('ec2-ip')
         EC2_USER = "ec2-user"   
-        EC2_KEY = credentials('jenkins-key')
+        EC2_KEY = credentials('ec2-ssh-key')
     }
 
     stages {
@@ -29,32 +29,32 @@ pipeline {
         stage('Verify') {
             steps {
                 echo '🔍 Verifying environment...'
-                sh 'docker --version'
-                sh 'docker-compose --version'
+                bat 'docker --version'
+                bat 'docker-compose --version'
             }
         }
 
         stage('Build Images') {
             steps {
                 echo '🔨 Building Docker images...'
-                sh 'docker-compose build'
+                bat 'docker-compose build'
             }
         }
 
         stage('Tag Images') {
             steps {
                 echo '🏷️  Tagging images...'
-                sh '''
-                    docker tag ${DOCKER_REPO}:nginx ${DOCKER_REPO}:nginx-${IMAGE_TAG}
-                    docker tag ${DOCKER_REPO}:nginx ${DOCKER_REPO}:nginx-latest
-                    docker tag ${DOCKER_REPO}:httpd ${DOCKER_REPO}:httpd-${IMAGE_TAG}
-                    docker tag ${DOCKER_REPO}:httpd ${DOCKER_REPO}:httpd-latest
-                    docker tag ${DOCKER_REPO}:caddy ${DOCKER_REPO}:caddy-${IMAGE_TAG}
-                    docker tag ${DOCKER_REPO}:caddy ${DOCKER_REPO}:caddy-latest
-                    docker tag ${DOCKER_REPO}:traefik ${DOCKER_REPO}:traefik-${IMAGE_TAG}
-                    docker tag ${DOCKER_REPO}:traefik ${DOCKER_REPO}:traefik-latest
-                    docker tag ${DOCKER_REPO}:app ${DOCKER_REPO}:app-${IMAGE_TAG}
-                    docker tag ${DOCKER_REPO}:app ${DOCKER_REPO}:app-latest
+                bat '''
+                    docker tag %DOCKER_REPO%:nginx %DOCKER_REPO%:nginx-%IMAGE_TAG%
+                    docker tag %DOCKER_REPO%:nginx %DOCKER_REPO%:nginx-latest
+                    docker tag %DOCKER_REPO%:httpd %DOCKER_REPO%:httpd-%IMAGE_TAG%
+                    docker tag %DOCKER_REPO%:httpd %DOCKER_REPO%:httpd-latest
+                    docker tag %DOCKER_REPO%:caddy %DOCKER_REPO%:caddy-%IMAGE_TAG%
+                    docker tag %DOCKER_REPO%:caddy %DOCKER_REPO%:caddy-latest
+                    docker tag %DOCKER_REPO%:traefik %DOCKER_REPO%:traefik-%IMAGE_TAG%
+                    docker tag %DOCKER_REPO%:traefik %DOCKER_REPO%:traefik-latest
+                    docker tag %DOCKER_REPO%:app %DOCKER_REPO%:app-%IMAGE_TAG%
+                    docker tag %DOCKER_REPO%:app %DOCKER_REPO%:app-latest
                 '''
             }
         }
@@ -62,49 +62,19 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 echo '📤 Pushing images to Docker Hub...'
-                sh '''
-                    echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
-                    docker push ${DOCKER_REPO}:nginx-${IMAGE_TAG}
-                    docker push ${DOCKER_REPO}:nginx-latest
-                    docker push ${DOCKER_REPO}:httpd-${IMAGE_TAG}
-                    docker push ${DOCKER_REPO}:httpd-latest
-                    docker push ${DOCKER_REPO}:caddy-${IMAGE_TAG}
-                    docker push ${DOCKER_REPO}:caddy-latest
-                    docker push ${DOCKER_REPO}:traefik-${IMAGE_TAG}
-                    docker push ${DOCKER_REPO}:traefik-latest
-                    docker push ${DOCKER_REPO}:app-${IMAGE_TAG}
-                    docker push ${DOCKER_REPO}:app-latest
+                bat '''
+                    docker login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
+                    docker push %DOCKER_REPO%:nginx-%IMAGE_TAG%
+                    docker push %DOCKER_REPO%:nginx-latest
+                    docker push %DOCKER_REPO%:httpd-%IMAGE_TAG%
+                    docker push %DOCKER_REPO%:httpd-latest
+                    docker push %DOCKER_REPO%:caddy-%IMAGE_TAG%
+                    docker push %DOCKER_REPO%:caddy-latest
+                    docker push %DOCKER_REPO%:traefik-%IMAGE_TAG%
+                    docker push %DOCKER_REPO%:traefik-latest
+                    docker push %DOCKER_REPO%:app-%IMAGE_TAG%
+                    docker push %DOCKER_REPO%:app-latest
                     docker logout
-                '''
-            }
-        }
-
-        stage('Deploy to EC2') {
-            steps {
-                echo '🚀 Deploying to EC2...'
-                sh '''
-                    scp -i ${EC2_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${EC2_USER}@${EC2_IP}:/home/ec2-user/app/
-                    scp -i ${EC2_KEY} -o StrictHostKeyChecking=no .env ${EC2_USER}@${EC2_IP}:/home/ec2-user/app/
-                    scp -i ${EC2_KEY} -o StrictHostKeyChecking=no -r html/ ${EC2_USER}@${EC2_IP}:/home/ec2-user/app/
-                    scp -i ${EC2_KEY} -o StrictHostKeyChecking=no -r app/ ${EC2_USER}@${EC2_IP}:/home/ec2-user/app/
-                    
-                    ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} "cd /home/ec2-user/app && docker-compose pull && docker-compose down && docker-compose up -d"
-                '''
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                echo '✅ Verifying deployment...'
-                sh '''
-                    ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} "docker-compose ps"
-                    
-                    echo "Testing service endpoints..."
-                    ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} "curl -s -o /dev/null -w '%{http_code}' http://localhost:9080"
-                    ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} "curl -s -o /dev/null -w '%{http_code}' http://localhost:9081"
-                    ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} "curl -s -o /dev/null -w '%{http_code}' http://localhost:9082"
-                    ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} "curl -s -o /dev/null -w '%{http_code}' http://localhost:3000"
-                    ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} "curl -s -o /dev/null -w '%{http_code}' http://localhost:9088"
                 '''
             }
         }
@@ -112,27 +82,14 @@ pipeline {
         stage('Cleanup') {
             steps {
                 echo '🧹 Cleaning up old images...'
-                sh '''
-                    docker image prune -f --filter "until=24h"
-                '''
+                bat 'docker image prune -f --filter "until=24h"'
             }
         }
     }
 
     post {
         success {
-            echo """
-            ========================================
-            ✅ DEPLOYMENT SUCCESSFUL
-            ========================================
-            Access Services At:
-            Nginx:   http://${EC2_IP}:9080
-            Apache:  http://${EC2_IP}:9081
-            Caddy:   http://${EC2_IP}:9082
-            App:     http://${EC2_IP}:3000
-            Traefik: http://${EC2_IP}:9088
-            ========================================
-            """
+            echo "✅ Pipeline succeeded! Images pushed to Docker Hub."
         }
         failure {
             echo "❌ Pipeline failed. Check logs for details."
