@@ -25,32 +25,32 @@ pipeline {
         stage('Verify') {
             steps {
                 echo 'Verifying environment...'
-                bat 'docker --version'
-                bat 'docker-compose --version'
+                sh 'docker --version'
+                sh 'docker-compose --version'
             }
         }
 
         stage('Build Images') {
             steps {
                 echo 'Building Docker images...'
-                bat 'docker-compose build'
+                sh 'docker-compose build'
             }
         }
 
         stage('Tag Images') {
             steps {
                 echo 'Tagging images...'
-                bat '''
-                    docker tag %DOCKER_REPO%:nginx %DOCKER_REPO%:nginx-%IMAGE_TAG%
-                    docker tag %DOCKER_REPO%:nginx %DOCKER_REPO%:nginx-latest
-                    docker tag %DOCKER_REPO%:httpd %DOCKER_REPO%:httpd-%IMAGE_TAG%
-                    docker tag %DOCKER_REPO%:httpd %DOCKER_REPO%:httpd-latest
-                    docker tag %DOCKER_REPO%:caddy %DOCKER_REPO%:caddy-%IMAGE_TAG%
-                    docker tag %DOCKER_REPO%:caddy %DOCKER_REPO%:caddy-latest
-                    docker tag %DOCKER_REPO%:traefik %DOCKER_REPO%:traefik-%IMAGE_TAG%
-                    docker tag %DOCKER_REPO%:traefik %DOCKER_REPO%:traefik-latest
-                    docker tag %DOCKER_REPO%:app %DOCKER_REPO%:app-%IMAGE_TAG%
-                    docker tag %DOCKER_REPO%:app %DOCKER_REPO%:app-latest
+                sh '''
+                    docker tag $DOCKER_REPO:nginx $DOCKER_REPO:nginx-$IMAGE_TAG
+                    docker tag $DOCKER_REPO:nginx $DOCKER_REPO:nginx-latest
+                    docker tag $DOCKER_REPO:httpd $DOCKER_REPO:httpd-$IMAGE_TAG
+                    docker tag $DOCKER_REPO:httpd $DOCKER_REPO:httpd-latest
+                    docker tag $DOCKER_REPO:caddy $DOCKER_REPO:caddy-$IMAGE_TAG
+                    docker tag $DOCKER_REPO:caddy $DOCKER_REPO:caddy-latest
+                    docker tag $DOCKER_REPO:traefik $DOCKER_REPO:traefik-$IMAGE_TAG
+                    docker tag $DOCKER_REPO:traefik $DOCKER_REPO:traefik-latest
+                    docker tag $DOCKER_REPO:app $DOCKER_REPO:app-$IMAGE_TAG
+                    docker tag $DOCKER_REPO:app $DOCKER_REPO:app-latest
                 '''
             }
         }
@@ -123,7 +123,7 @@ pipeline {
         stage('Cleanup') {
             steps {
                 echo 'Cleaning up old images...'
-                bat 'docker image prune -f --filter "until=24h"'
+                sh 'docker image prune -f --filter "until=24h"'
             }
         }
 
