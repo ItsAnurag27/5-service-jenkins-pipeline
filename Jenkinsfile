@@ -66,7 +66,7 @@ pipeline {
                             $ec2Ip = $env:EC2_IP
                             $imageTag = $env:IMAGE_TAG
                             $dockerRepo = $env:DOCKER_REPO
-                            $tempDir = "C:\temp_docker_images"
+                            $tempDir = "C:/temp_docker_images"
                             
                             Write-Host "[*] Creating temporary directory for Docker images..."
                             if (!(Test-Path $tempDir)) {
@@ -74,18 +74,18 @@ pipeline {
                             }
                             
                             Write-Host "[*] Saving Docker images to tar files..."
-                            docker save "${dockerRepo}:nginx-${imageTag}" -o "$tempDir\nginx-${imageTag}.tar"
-                            docker save "${dockerRepo}:httpd-${imageTag}" -o "$tempDir\httpd-${imageTag}.tar"
-                            docker save "${dockerRepo}:caddy-${imageTag}" -o "$tempDir\caddy-${imageTag}.tar"
-                            docker save "${dockerRepo}:traefik-${imageTag}" -o "$tempDir\traefik-${imageTag}.tar"
-                            docker save "${dockerRepo}:app-${imageTag}" -o "$tempDir\app-${imageTag}.tar"
+                            docker save "${dockerRepo}:nginx-${imageTag}" -o "$tempDir/nginx-${imageTag}.tar"
+                            docker save "${dockerRepo}:httpd-${imageTag}" -o "$tempDir/httpd-${imageTag}.tar"
+                            docker save "${dockerRepo}:caddy-${imageTag}" -o "$tempDir/caddy-${imageTag}.tar"
+                            docker save "${dockerRepo}:traefik-${imageTag}" -o "$tempDir/traefik-${imageTag}.tar"
+                            docker save "${dockerRepo}:app-${imageTag}" -o "$tempDir/app-${imageTag}.tar"
                             
                             Write-Host "[OK] Docker images saved"
                             Write-Host "[*] Transferring images to EC2..."
                             
                             # Transfer images via SCP
                             ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "mkdir -p ~/docker_images"
-                            scp -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$tempDir\*.tar" "$ec2User@$ec2Ip`:~/docker_images/"
+                            scp -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$tempDir/*.tar" "$ec2User@$ec2Ip`:~/docker_images/"
                             
                             Write-Host "[OK] Images transferred to EC2"
                             Write-Host "[*] Loading images on EC2..."
@@ -101,7 +101,7 @@ pipeline {
                             
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] All images loaded on EC2 successfully"
-                                Remove-Item "$tempDir\*.tar" -Force
+                                Remove-Item "$tempDir/*.tar" -Force
                                 Write-Host "[OK] Temporary files cleaned up"
                             } else {
                                 Write-Host "[ERROR] Failed to load images on EC2"
