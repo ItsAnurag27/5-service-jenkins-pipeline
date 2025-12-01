@@ -59,20 +59,22 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 echo '📤 Pushing images to Docker Hub...'
-                bat '''
-                    docker login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
-                    docker push %DOCKER_REPO%:nginx-%IMAGE_TAG%
-                    docker push %DOCKER_REPO%:nginx-latest
-                    docker push %DOCKER_REPO%:httpd-%IMAGE_TAG%
-                    docker push %DOCKER_REPO%:httpd-latest
-                    docker push %DOCKER_REPO%:caddy-%IMAGE_TAG%
-                    docker push %DOCKER_REPO%:caddy-latest
-                    docker push %DOCKER_REPO%:traefik-%IMAGE_TAG%
-                    docker push %DOCKER_REPO%:traefik-latest
-                    docker push %DOCKER_REPO%:app-%IMAGE_TAG%
-                    docker push %DOCKER_REPO%:app-latest
-                    docker logout
-                '''
+                script {
+                    bat '''
+                        echo %DOCKER_PASSWORD% | docker login -u %DOCKER_USERNAME% --password-stdin
+                        docker push %DOCKER_REPO%:nginx-%IMAGE_TAG%
+                        docker push %DOCKER_REPO%:nginx-latest
+                        docker push %DOCKER_REPO%:httpd-%IMAGE_TAG%
+                        docker push %DOCKER_REPO%:httpd-latest
+                        docker push %DOCKER_REPO%:caddy-%IMAGE_TAG%
+                        docker push %DOCKER_REPO%:caddy-latest
+                        docker push %DOCKER_REPO%:traefik-%IMAGE_TAG%
+                        docker push %DOCKER_REPO%:traefik-latest
+                        docker push %DOCKER_REPO%:app-%IMAGE_TAG%
+                        docker push %DOCKER_REPO%:app-latest
+                        docker logout
+                    '''
+                }
             }
         }
 
