@@ -120,7 +120,7 @@ pipeline {
                             
                             Write-Host "[*] Deploying to EC2 at $ec2Ip..."
                             
-                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" sh -s <<'EOFSCRIPT'
+                            $script = @'
                                 # Update and install Docker
                                 sudo yum update -y >/dev/null 2>&1
                                 sudo yum install -y docker git >/dev/null 2>&1
@@ -154,7 +154,8 @@ pipeline {
                                 docker-compose up -d
                                 
                                 echo "[OK] Services deployed on EC2"
-EOFSCRIPT
+'@
+                            $script | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                             
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] EC2 deployment completed"
@@ -186,7 +187,7 @@ EOFSCRIPT
                             
                             Write-Host "[*] Checking service status on $ec2Ip..."
                             
-                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" sh -s <<'EOFVERIFY'
+                            $verifyScript = @'
                                 echo "Verifying services..."
                                 docker ps
                                 curl -s http://localhost:3000 > /dev/null && echo "[OK] App service running on port 3000" || echo "[ERROR] App service DOWN"
@@ -194,7 +195,8 @@ EOFSCRIPT
                                 curl -s http://localhost:9081 > /dev/null && echo "[OK] Apache running on port 9081" || echo "[ERROR] Apache DOWN"
                                 curl -s http://localhost:9082 > /dev/null && echo "[OK] BusyBox running on port 9082" || echo "[ERROR] BusyBox DOWN"
                                 curl -s http://localhost:9083 > /dev/null && echo "[OK] Memcached running on port 9083" || echo "[ERROR] Memcached DOWN"
-EOFVERIFY
+'@
+                            $verifyScript | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                         '''
                     }
                 }
