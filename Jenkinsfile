@@ -59,61 +59,20 @@ pipeline {
 
         stage('Push to EC2') {
             steps {
-                echo 'Pushing Docker images directly to EC2...'
+                echo 'Skipping image transfer - will build on EC2 directly...'
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
                             $sshKey = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
                             $ec2Ip = $env:EC2_IP
-                            $imageTag = $env:IMAGE_TAG
-                            $dockerRepo = $env:DOCKER_REPO
-                            $tempDir = "C:/temp_docker_images"
                             
-                            # Fix SSH key permissions
-                            Write-Host "[*] Fixing SSH key permissions..."
+                            Write-Host "[*] Testing SSH connection to EC2..."
                             try {
-                                # Remove all inherited permissions and ACEs
-                                icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
-                                # Grant full control to SYSTEM
-                                icacls "$sshKey" /grant:r "SYSTEM`:`(F`)" 2>&1 | Out-Null
-                                # Grant full control to Administrators
-                                icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
-                                Write-Host "[OK] SSH key permissions fixed"
+                                ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 "$ec2User@$ec2Ip" "echo 'SSH connection successful'; uname -a"
+                                Write-Host "[OK] SSH connection to EC2 verified"
                             } catch {
-                                Write-Host "[WARNING] Could not fix permissions, continuing anyway: $_"
-                            }
-                            
-                            Write-Host "[*] Creating temporary directory for Docker images..."
-                            if (!(Test-Path $tempDir)) {
-                                New-Item -ItemType Directory -Path $tempDir | Out-Null
-                            }
-                            
-                            Write-Host "[*] Saving Docker images to tar files..."
-                            docker save "${dockerRepo}:nginx-${imageTag}" -o "$tempDir/nginx-${imageTag}.tar"
-                            docker save "${dockerRepo}:httpd-${imageTag}" -o "$tempDir/httpd-${imageTag}.tar"
-                            docker save "${dockerRepo}:busybox-${imageTag}" -o "$tempDir/busybox-${imageTag}.tar"
-                            docker save "${dockerRepo}:memcached-${imageTag}" -o "$tempDir/memcached-${imageTag}.tar"
-                            docker save "${dockerRepo}:app-${imageTag}" -o "$tempDir/app-${imageTag}.tar"
-                            
-                            Write-Host "[OK] Docker images saved"
-                            Write-Host "[*] Transferring images to EC2..."
-                            
-                            # Transfer images via SCP
-                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "mkdir -p ~/docker_images"
-                            scp -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$tempDir/*.tar" "$ec2User@$ec2Ip`:~/docker_images/"
-                            
-                            Write-Host "[OK] Images transferred to EC2"
-                            Write-Host "[*] Loading images on EC2..."
-                            
-                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "cd ~/docker_images && for img in *.tar; do echo Loading \$img && docker load -i \$img; done && echo All images loaded successfully"
-                            
-                            if ($LASTEXITCODE -eq 0) {
-                                Write-Host "[OK] All images loaded on EC2 successfully"
-                                Remove-Item "$tempDir/*.tar" -Force
-                                Write-Host "[OK] Temporary files cleaned up"
-                            } else {
-                                Write-Host "[ERROR] Failed to load images on EC2"
+                                Write-Host "[ERROR] Failed to connect to EC2: $_"
                                 exit 1
                             }
                         '''
@@ -140,92 +99,34 @@ pipeline {
                             $ec2Ip = $env:EC2_IP
                             $imageTag = $env:IMAGE_TAG
                             
-                            Write-Host "[*] Deploying to EC2 at $ec2Ip as $ec2User..."
+                            Write-Host "[*] Deploying to EC2 at $ec2Ip..."
                             
-                            $sshCommand = @"
-                                # Update system
-                                sudo yum update -y
-                                
-                                # Install Docker
-                                sudo yum install -y docker git
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" @"
+                                # Update and install Docker
+                                sudo yum update -y >/dev/null 2>&1
+                                sudo yum install -y docker git >/dev/null 2>&1
                                 sudo systemctl start docker
                                 sudo systemctl enable docker
-                                sudo usermod -aG docker $ec2User
+                                sudo usermod -aG docker ec2-user
                                 
                                 # Install Docker Compose
-                                sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)" -o /usr/local/bin/docker-compose
+                                sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-`$(uname -s)-`$(uname -m)" -o /usr/local/bin/docker-compose >/dev/null 2>&1
                                 sudo chmod +x /usr/local/bin/docker-compose
                                 
-                                # Clone or update repository
-                                if [ -d ~/5-service-jenkins-pipeline ]; then
-                                    cd ~/5-service-jenkins-pipeline
-                                    git pull origin main
-                                else
-                                    cd ~
-                                    git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git
-                                    cd 5-service-jenkins-pipeline
-                                fi
+                                # Clone repository
+                                rm -rf ~/5-service-jenkins-pipeline
+                                git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline
+                                cd ~/5-service-jenkins-pipeline
                                 
-                                # Create docker-compose.yml with local images
-                                cat > docker-compose.yml << 'COMPOSEEOF'
-version: '3.8'
-services:
-  nginx:
-    image: service-pipeline:nginx-${imageTag}
-    ports:
-      - "9080:80"
-    networks:
-      - service-net
-
-  httpd:
-    image: service-pipeline:httpd-${imageTag}
-    ports:
-      - "9081:80"
-    networks:
-      - service-net
-
-  busybox:
-    image: service-pipeline:busybox-${imageTag}
-    ports:
-      - "9082:80"
-    networks:
-      - service-net
-
-  memcached:
-    image: service-pipeline:memcached-${imageTag}
-    ports:
-      - "9083:80"
-    networks:
-      - service-net
-
-  app:
-    image: service-pipeline:app-${imageTag}
-    ports:
-      - "3000:3000"
-    networks:
-      - service-net
-
-networks:
-  service-net:
-    driver: bridge
-COMPOSEEOF
-                                
-                                # Redeploy services
-                                docker-compose down
+                                # Build and deploy
+                                docker-compose down 2>/dev/null
+                                docker-compose build --no-cache
                                 docker-compose up -d
-                                docker-compose ps
                                 
-                                echo "EC2 Deployment completed"
+                                echo "[OK] Services deployed on EC2"
 "@
                             
-                            Write-Host "[*] Connecting to EC2 via SSH..."
-                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" $sshCommand
-                            
-                            if ($LASTEXITCODE -eq 0) {
-                                Write-Host "[OK] EC2 deployment completed successfully"
-                            } else {
-                                Write-Host "[ERROR] EC2 deployment encountered an issue"
-                            }
+                            Write-Host "[OK] EC2 deployment initiated"
                         '''
                     }
                 }
