@@ -137,9 +137,11 @@ pipeline {
                                 git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline
                                 cd ~/5-service-jenkins-pipeline
                                 
-                                # Build and deploy
-                                docker-compose down 2>/dev/null
-                                docker-compose build --no-cache
+                                # Wait for docker group changes
+                                sleep 2
+                                
+                                # Deploy services using pre-built images
+                                docker-compose down 2>/dev/null || true
                                 docker-compose up -d
                                 
                                 echo "[OK] Services deployed on EC2"
@@ -167,10 +169,17 @@ pipeline {
                             $ec2User = $env:EC2_USER
                             $ec2Ip = $env:EC2_IP
                             
+                            Write-Host "[*] Fixing SSH key permissions..."
+                            icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
+                            icacls "$sshKey" /grant:r "SYSTEM`:`(F`)" 2>&1 | Out-Null
+                            icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
+                            Write-Host "[OK] SSH key permissions fixed"
+                            
                             Write-Host "[*] Checking service status on $ec2Ip..."
                             
                             ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" @"
                                 echo "Verifying services..."
+                                docker ps
                                 curl -s http://localhost:3000 > /dev/null && echo "[OK] App service running on port 3000" || echo "[ERROR] App service DOWN"
                                 curl -s http://localhost:9080 > /dev/null && echo "[OK] Nginx running on port 9080" || echo "[ERROR] Nginx DOWN"
                                 curl -s http://localhost:9081 > /dev/null && echo "[OK] Apache running on port 9081" || echo "[ERROR] Apache DOWN"
