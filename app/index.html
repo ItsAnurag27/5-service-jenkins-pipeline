@@ -179,6 +179,7 @@
             }
         }
     </style>
+    <script src="config.js"></script>
 </head>
 <body>
     <div class="container">
@@ -197,7 +198,7 @@
                 <h2>Nginx</h2>
                 <div class="service-port">Port: 9080</div>
                 <p>High-performance web server and reverse proxy built on Alpine Linux</p>
-                <a href="http://localhost:9080" class="service-link">Access Nginx</a>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('nginx')); return false;">Access Nginx</a>
             </div>
 
             <div class="service-card">
@@ -205,7 +206,7 @@
                 <h2>Apache</h2>
                 <div class="service-port">Port: 9081</div>
                 <p>Classic HTTP server with full module support, lightweight Alpine version</p>
-                <a href="http://localhost:9081" class="service-link">Access Apache</a>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('apache')); return false;">Access Apache</a>
             </div>
 
             <div class="service-card">
@@ -213,7 +214,7 @@
                 <h2>BusyBox</h2>
                 <div class="service-port">Port: 9082</div>
                 <p>Ultra-lightweight web server with minimal footprint, perfect for containerized environments</p>
-                <a href="http://localhost:9082" class="service-link">Access BusyBox</a>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('busybox')); return false;">Access BusyBox</a>
             </div>
 
             <div class="service-card">
@@ -221,7 +222,7 @@
                 <h2>Memcached</h2>
                 <div class="service-port">Port: 9083</div>
                 <p>High-performance in-memory caching system for distributed applications</p>
-                <a href="http://localhost:9083" class="service-link">Dashboard</a>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('memcached')); return false;">Dashboard</a>
             </div>
 
             <div class="service-card">
@@ -229,7 +230,7 @@
                 <h2>App Service</h2>
                 <div class="service-port">Port: 3000</div>
                 <p>Python application service running HTTP server with container support</p>
-                <a href="http://localhost:3000" class="service-link">Access App</a>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('app')); return false;">Access App</a>
             </div>
         </div>
 
