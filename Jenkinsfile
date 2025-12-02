@@ -47,10 +47,10 @@ pipeline {
                     docker tag "${repo}:nginx" "${repo}:nginx-latest"
                     docker tag "${repo}:httpd" "${repo}:httpd-${tag}"
                     docker tag "${repo}:httpd" "${repo}:httpd-latest"
-                    docker tag "${repo}:caddy" "${repo}:caddy-${tag}"
-                    docker tag "${repo}:caddy" "${repo}:caddy-latest"
-                    docker tag "${repo}:traefik" "${repo}:traefik-${tag}"
-                    docker tag "${repo}:traefik" "${repo}:traefik-latest"
+                    docker tag "${repo}:busybox" "${repo}:busybox-${tag}"
+                    docker tag "${repo}:busybox" "${repo}:busybox-latest"
+                    docker tag "${repo}:memcached" "${repo}:memcached-${tag}"
+                    docker tag "${repo}:memcached" "${repo}:memcached-latest"
                     docker tag "${repo}:app" "${repo}:app-${tag}"
                     docker tag "${repo}:app" "${repo}:app-latest"
                 '''
@@ -92,8 +92,8 @@ pipeline {
                             Write-Host "[*] Saving Docker images to tar files..."
                             docker save "${dockerRepo}:nginx-${imageTag}" -o "$tempDir/nginx-${imageTag}.tar"
                             docker save "${dockerRepo}:httpd-${imageTag}" -o "$tempDir/httpd-${imageTag}.tar"
-                            docker save "${dockerRepo}:caddy-${imageTag}" -o "$tempDir/caddy-${imageTag}.tar"
-                            docker save "${dockerRepo}:traefik-${imageTag}" -o "$tempDir/traefik-${imageTag}.tar"
+                            docker save "${dockerRepo}:busybox-${imageTag}" -o "$tempDir/busybox-${imageTag}.tar"
+                            docker save "${dockerRepo}:memcached-${imageTag}" -o "$tempDir/memcached-${imageTag}.tar"
                             docker save "${dockerRepo}:app-${imageTag}" -o "$tempDir/app-${imageTag}.tar"
                             
                             Write-Host "[OK] Docker images saved"
@@ -184,18 +184,17 @@ services:
     networks:
       - service-net
 
-  caddy:
-    image: service-pipeline:caddy-${imageTag}
+  busybox:
+    image: service-pipeline:busybox-${imageTag}
     ports:
       - "9082:80"
     networks:
       - service-net
 
-  traefik:
-    image: service-pipeline:traefik-${imageTag}
+  memcached:
+    image: service-pipeline:memcached-${imageTag}
     ports:
-      - "8080:8080"
-      - "9088:80"
+      - "9083:80"
     networks:
       - service-net
 
@@ -250,8 +249,8 @@ COMPOSEEOF
                                 curl -s http://localhost:3000 > /dev/null && echo "[OK] App service running on port 3000" || echo "[ERROR] App service DOWN"
                                 curl -s http://localhost:9080 > /dev/null && echo "[OK] Nginx running on port 9080" || echo "[ERROR] Nginx DOWN"
                                 curl -s http://localhost:9081 > /dev/null && echo "[OK] Apache running on port 9081" || echo "[ERROR] Apache DOWN"
-                                curl -s http://localhost:9082 > /dev/null && echo "[OK] Caddy running on port 9082" || echo "[ERROR] Caddy DOWN"
-                                curl -s http://localhost:9088 > /dev/null && echo "[OK] Traefik running on port 9088" || echo "[ERROR] Traefik DOWN"
+                                curl -s http://localhost:9082 > /dev/null && echo "[OK] BusyBox running on port 9082" || echo "[ERROR] BusyBox DOWN"
+                                curl -s http://localhost:9083 > /dev/null && echo "[OK] Memcached running on port 9083" || echo "[ERROR] Memcached DOWN"
 "@
                         '''
                     }

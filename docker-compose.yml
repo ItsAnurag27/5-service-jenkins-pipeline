@@ -51,64 +51,6 @@ services:
         max-size: "100m"
         max-file: "3"
 
-  caddy:
-    build:
-      context: .
-      dockerfile: services/caddy/Dockerfile
-    image: ${DOCKER_REPO}:caddy
-    container_name: caddy-service
-    ports:
-      - "9082:80"
-    volumes:
-      - caddy-data:/data
-      - caddy-config:/config
-    networks:
-      - service-network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "100m"
-        max-file: "3"
-
-  traefik:
-    build:
-      context: .
-      dockerfile: services/traefik/Dockerfile
-    image: ${DOCKER_REPO}:traefik
-    container_name: traefik-service
-    ports:
-      - "9088:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik-data:/data
-      - traefik-logs:/var/log
-    networks:
-      - service-network
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:8080"
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "100m"
-        max-file: "3"
-
   app:
     build:
       context: .
@@ -134,13 +76,55 @@ services:
         max-size: "100m"
         max-file: "3"
 
+  busybox:
+    build:
+      context: .
+      dockerfile: services/busybox/Dockerfile
+    image: ${DOCKER_REPO}:busybox
+    container_name: busybox-service
+    ports:
+      - "9082:80"
+    networks:
+      - service-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  memcached:
+    build:
+      context: .
+      dockerfile: services/memcached/Dockerfile
+    image: ${DOCKER_REPO}:memcached
+    container_name: memcached-service
+    ports:
+      - "9083:80"
+    networks:
+      - service-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
+
 volumes:
   nginx-logs:
   httpd-logs:
-  caddy-data:
-  caddy-config:
-  traefik-data:
-  traefik-logs:
   app-logs:
 
 networks:
