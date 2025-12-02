@@ -59,7 +59,7 @@ pipeline {
 
         stage('Push to EC2') {
             steps {
-                echo 'Skipping image transfer - will build on EC2 directly...'
+                echo 'Verifying SSH connection to EC2...'
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
@@ -67,12 +67,26 @@ pipeline {
                             $ec2User = $env:EC2_USER
                             $ec2Ip = $env:EC2_IP
                             
-                            Write-Host "[*] Testing SSH connection to EC2..."
+                            Write-Host "[*] Fixing SSH key permissions..."
                             try {
-                                ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 "$ec2User@$ec2Ip" "echo 'SSH connection successful'; uname -a"
-                                Write-Host "[OK] SSH connection to EC2 verified"
+                                # Remove all inherited permissions
+                                icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
+                                # Grant full control to SYSTEM only
+                                icacls "$sshKey" /grant:r "SYSTEM`:`(F`)" 2>&1 | Out-Null
+                                # Grant full control to Administrators only
+                                icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
+                                Write-Host "[OK] SSH key permissions fixed"
                             } catch {
-                                Write-Host "[ERROR] Failed to connect to EC2: $_"
+                                Write-Host "[WARNING] Could not fix permissions: $_"
+                            }
+                            
+                            Write-Host "[*] Testing SSH connection to EC2..."
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 "$ec2User@$ec2Ip" "echo 'SSH connection successful'; uname -a"
+                            
+                            if ($LASTEXITCODE -eq 0) {
+                                Write-Host "[OK] SSH connection to EC2 verified"
+                            } else {
+                                Write-Host "[ERROR] Failed to connect to EC2 (exit code: $LASTEXITCODE)"
                                 exit 1
                             }
                         '''
