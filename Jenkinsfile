@@ -111,7 +111,12 @@ pipeline {
                             $sshKey = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
                             $ec2Ip = $env:EC2_IP
-                            $imageTag = $env:IMAGE_TAG
+                            
+                            Write-Host "[*] Fixing SSH key permissions..."
+                            icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
+                            icacls "$sshKey" /grant:r "SYSTEM`:`(F`)" 2>&1 | Out-Null
+                            icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
+                            Write-Host "[OK] SSH key permissions fixed"
                             
                             Write-Host "[*] Deploying to EC2 at $ec2Ip..."
                             
@@ -140,7 +145,12 @@ pipeline {
                                 echo "[OK] Services deployed on EC2"
 "@
                             
-                            Write-Host "[OK] EC2 deployment initiated"
+                            if ($LASTEXITCODE -eq 0) {
+                                Write-Host "[OK] EC2 deployment completed"
+                            } else {
+                                Write-Host "[ERROR] EC2 deployment failed (exit code: $LASTEXITCODE)"
+                                exit 1
+                            }
                         '''
                     }
                 }
