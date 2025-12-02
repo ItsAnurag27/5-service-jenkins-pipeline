@@ -120,7 +120,7 @@ pipeline {
                             
                             Write-Host "[*] Deploying to EC2 at $ec2Ip..."
                             
-                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" @"
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" sh -s <<'EOFSCRIPT'
                                 # Update and install Docker
                                 sudo yum update -y >/dev/null 2>&1
                                 sudo yum install -y docker git >/dev/null 2>&1
@@ -129,7 +129,7 @@ pipeline {
                                 sudo usermod -aG docker ec2-user
                                 
                                 # Install Docker Compose
-                                sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-`$(uname -s)-`$(uname -m)" -o /usr/local/bin/docker-compose >/dev/null 2>&1
+                                sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose >/dev/null 2>&1
                                 sudo chmod +x /usr/local/bin/docker-compose
                                 
                                 # Clone repository
@@ -143,18 +143,18 @@ pipeline {
                                 # Build images directly using docker build
                                 export DOCKER_REPO=service-pipeline
                                 echo "Building Docker images..."
-                                docker build -f services/nginx/Dockerfile -t \$DOCKER_REPO:nginx .
-                                docker build -f services/httpd/Dockerfile -t \$DOCKER_REPO:httpd .
-                                docker build -f services/app/Dockerfile -t \$DOCKER_REPO:app .
-                                docker build -f services/busybox/Dockerfile -t \$DOCKER_REPO:busybox .
-                                docker build -f services/memcached/Dockerfile -t \$DOCKER_REPO:memcached .
+                                docker build -f services/nginx/Dockerfile -t $DOCKER_REPO:nginx .
+                                docker build -f services/httpd/Dockerfile -t $DOCKER_REPO:httpd .
+                                docker build -f services/app/Dockerfile -t $DOCKER_REPO:app .
+                                docker build -f services/busybox/Dockerfile -t $DOCKER_REPO:busybox .
+                                docker build -f services/memcached/Dockerfile -t $DOCKER_REPO:memcached .
                                 
                                 # Deploy services
                                 docker-compose down 2>/dev/null || true
                                 docker-compose up -d
                                 
                                 echo "[OK] Services deployed on EC2"
-"@
+EOFSCRIPT
                             
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] EC2 deployment completed"
@@ -186,7 +186,7 @@ pipeline {
                             
                             Write-Host "[*] Checking service status on $ec2Ip..."
                             
-                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" @"
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" sh -s <<'EOFVERIFY'
                                 echo "Verifying services..."
                                 docker ps
                                 curl -s http://localhost:3000 > /dev/null && echo "[OK] App service running on port 3000" || echo "[ERROR] App service DOWN"
@@ -194,7 +194,7 @@ pipeline {
                                 curl -s http://localhost:9081 > /dev/null && echo "[OK] Apache running on port 9081" || echo "[ERROR] Apache DOWN"
                                 curl -s http://localhost:9082 > /dev/null && echo "[OK] BusyBox running on port 9082" || echo "[ERROR] BusyBox DOWN"
                                 curl -s http://localhost:9083 > /dev/null && echo "[OK] Memcached running on port 9083" || echo "[ERROR] Memcached DOWN"
-"@
+EOFVERIFY
                         '''
                     }
                 }
