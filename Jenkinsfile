@@ -132,11 +132,6 @@ pipeline {
                                 sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-`$(uname -s)-`$(uname -m)" -o /usr/local/bin/docker-compose >/dev/null 2>&1
                                 sudo chmod +x /usr/local/bin/docker-compose
                                 
-                                # Install buildx plugin for docker
-                                mkdir -p ~/.docker/cli-plugins
-                                curl -s -L "https://github.com/docker/buildx/releases/latest/download/buildx-v0.17.0.linux-`arch`" -o ~/.docker/cli-plugins/docker-buildx 2>/dev/null || true
-                                chmod +x ~/.docker/cli-plugins/docker-buildx 2>/dev/null || true
-                                
                                 # Clone repository
                                 rm -rf ~/5-service-jenkins-pipeline
                                 git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline
@@ -145,11 +140,18 @@ pipeline {
                                 # Wait for docker group changes
                                 sleep 2
                                 
-                                # Deploy services - force build from Dockerfiles
+                                # Build images directly using docker build
                                 export DOCKER_REPO=service-pipeline
+                                echo "Building Docker images..."
+                                docker build -f services/nginx/Dockerfile -t \$DOCKER_REPO:nginx .
+                                docker build -f services/httpd/Dockerfile -t \$DOCKER_REPO:httpd .
+                                docker build -f services/app/Dockerfile -t \$DOCKER_REPO:app .
+                                docker build -f services/busybox/Dockerfile -t \$DOCKER_REPO:busybox .
+                                docker build -f services/memcached/Dockerfile -t \$DOCKER_REPO:memcached .
+                                
+                                # Deploy services
                                 docker-compose down 2>/dev/null || true
-                                docker-compose up -d --build 2>&1 | head -50
-                                sleep 3
+                                docker-compose up -d
                                 
                                 echo "[OK] Services deployed on EC2"
 "@
