@@ -140,10 +140,10 @@ pipeline {
                                 # Wait for docker group changes
                                 sleep 2
                                 
-                                # Deploy services using pre-built images
+                                # Deploy services - force build from Dockerfiles
                                 export DOCKER_REPO=service-pipeline
                                 docker-compose down 2>/dev/null || true
-                                docker-compose up -d
+                                docker-compose up -d --build
                                 
                                 echo "[OK] Services deployed on EC2"
 "@
