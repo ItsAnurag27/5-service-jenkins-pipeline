@@ -128,6 +128,10 @@ pipeline {
                                 sudo systemctl enable docker
                                 sudo usermod -aG docker ec2-user
                                 
+                                # Restart docker to apply group changes
+                                sudo systemctl restart docker
+                                sudo newgrp docker
+                                
                                 # Install Docker Compose
                                 sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose >/dev/null 2>&1
                                 sudo chmod +x /usr/local/bin/docker-compose
@@ -136,9 +140,6 @@ pipeline {
                                 rm -rf ~/5-service-jenkins-pipeline
                                 git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline
                                 cd ~/5-service-jenkins-pipeline
-                                
-                                # Wait for docker group changes
-                                sleep 2
                                 
                                 # Build images directly using docker build
                                 export DOCKER_REPO=service-pipeline
