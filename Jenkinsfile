@@ -141,6 +141,7 @@ pipeline {
                                 sleep 2
                                 
                                 # Deploy services using pre-built images
+                                export DOCKER_REPO=service-pipeline
                                 docker-compose down 2>/dev/null || true
                                 docker-compose up -d
                                 
