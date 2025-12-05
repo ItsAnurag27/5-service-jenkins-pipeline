@@ -193,12 +193,18 @@ docker-compose up -d
 echo "[OK] Services deployed on EC2"
 "@
 
-                            # Write to temp file with LF line endings only
+                            # Write deployment script as pure LF with no BOM
                             $tempFile = "$env:TEMP/deploy_$(Get-Random).sh"
                             $deployScriptLF = $deployScript -replace "`r`n", "`n"
-                            [System.IO.File]::WriteAllText($tempFile, $deployScriptLF, [System.Text.Encoding]::UTF8)
+                            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+                            [System.IO.File]::WriteAllText($tempFile, $deployScriptLF, $utf8NoBom)
                             
-                            # Pipe clean file content directly to SSH bash (avoids CRLF re-insertion)
+                            # Convert file to Unix line endings (remove any CRLF that might exist)
+                            $content = [System.IO.File]::ReadAllText($tempFile, [System.Text.Encoding]::UTF8)
+                            $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
+                            [System.IO.File]::WriteAllText($tempFile, $content, $utf8NoBom)
+                            
+                            # Pipe to SSH - file is now guaranteed LF-only, no BOM
                             Get-Content -Raw $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                             Remove-Item $tempFile -Force
                             
@@ -262,12 +268,18 @@ curl -s http://localhost:8500 > /dev/null && echo "[OK] Consul running on port 8
 curl -s http://localhost:2379 > /dev/null && echo "[OK] etcd running on port 2379" || echo "[ERROR] etcd DOWN"
 "@
 
-                            # Write to temp file with LF line endings only
+                            # Write verification script as pure LF with no BOM
                             $tempFile = "$env:TEMP/verify_$(Get-Random).sh"
                             $verifyScriptLF = $verifyScript -replace "`r`n", "`n"
-                            [System.IO.File]::WriteAllText($tempFile, $verifyScriptLF, [System.Text.Encoding]::UTF8)
+                            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+                            [System.IO.File]::WriteAllText($tempFile, $verifyScriptLF, $utf8NoBom)
                             
-                            # Pipe clean file content directly to SSH bash (avoids CRLF re-insertion)
+                            # Convert file to Unix line endings (remove any CRLF that might exist)
+                            $content = [System.IO.File]::ReadAllText($tempFile, [System.Text.Encoding]::UTF8)
+                            $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
+                            [System.IO.File]::WriteAllText($tempFile, $content, $utf8NoBom)
+                            
+                            # Pipe to SSH - file is now guaranteed LF-only, no BOM
                             Get-Content -Raw $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                             Remove-Item $tempFile -Force
                         '''
