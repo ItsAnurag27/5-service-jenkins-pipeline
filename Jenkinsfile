@@ -175,29 +175,10 @@ pipeline {
                                 git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline
                                 cd ~/5-service-jenkins-pipeline
                                 
-                                # Build images directly using docker build
+                                # Build images using docker-compose (simpler and more reliable)
                                 export DOCKER_REPO=service-pipeline
-                                echo "Building Docker images..."
-                                docker build -f services/nginx/Dockerfile -t $DOCKER_REPO:nginx .
-                                docker build -f services/httpd/Dockerfile -t $DOCKER_REPO:httpd .
-                                docker build -f services/app/Dockerfile -t $DOCKER_REPO:app .
-                                docker build -f services/busybox/Dockerfile -t $DOCKER_REPO:busybox .
-                                docker build -f services/memcached/Dockerfile -t $DOCKER_REPO:memcached .
-                                docker build -f services/alpine/Dockerfile -t $DOCKER_REPO:alpine .
-                                docker build -f services/redis/Dockerfile -t $DOCKER_REPO:redis .
-                                docker build -f services/postgres/Dockerfile -t $DOCKER_REPO:postgres .
-                                docker build -f services/mongo/Dockerfile -t $DOCKER_REPO:mongo .
-                                docker build -f services/mysql/Dockerfile -t $DOCKER_REPO:mysql .
-                                docker build -f services/rabbitmq/Dockerfile -t $DOCKER_REPO:rabbitmq .
-                                docker build -f services/elasticsearch/Dockerfile -t $DOCKER_REPO:elasticsearch .
-                                docker build -f services/grafana/Dockerfile -t $DOCKER_REPO:grafana .
-                                docker build -f services/prometheus/Dockerfile -t $DOCKER_REPO:prometheus .
-                                docker build -f services/jenkins/Dockerfile -t $DOCKER_REPO:jenkins .
-                                docker build -f services/gitlab/Dockerfile -t $DOCKER_REPO:gitlab .
-                                docker build -f services/docker-registry/Dockerfile -t $DOCKER_REPO:docker-registry .
-                                docker build -f services/portainer/Dockerfile -t $DOCKER_REPO:portainer .
-                                docker build -f services/vault/Dockerfile -t $DOCKER_REPO:vault .
-                                docker build -f services/etcd/Dockerfile -t $DOCKER_REPO:etcd .
+                                echo "Building Docker images with docker-compose..."
+                                docker-compose build --no-cache
                                 
                                 # Deploy services
                                 docker-compose down 2>/dev/null || true
@@ -240,6 +221,8 @@ pipeline {
                             $verifyScript = @'
                                 echo "Verifying services..."
                                 docker ps
+                                
+                                # Check services by port
                                 curl -s http://localhost:3000 > /dev/null && echo "[OK] App service running on port 3000" || echo "[ERROR] App service DOWN"
                                 curl -s http://localhost:9080 > /dev/null && echo "[OK] Nginx running on port 9080" || echo "[ERROR] Nginx DOWN"
                                 curl -s http://localhost:9081 > /dev/null && echo "[OK] Apache running on port 9081" || echo "[ERROR] Apache DOWN"
@@ -251,11 +234,11 @@ pipeline {
                                 curl -s http://localhost:9087 > /dev/null && echo "[OK] MongoDB running on port 9087" || echo "[ERROR] MongoDB DOWN"
                                 curl -s http://localhost:9088 > /dev/null && echo "[OK] MySQL running on port 9088" || echo "[ERROR] MySQL DOWN"
                                 curl -s http://localhost:9089 > /dev/null && echo "[OK] RabbitMQ running on port 9089" || echo "[ERROR] RabbitMQ DOWN"
-                                curl -s http://localhost:9090 > /dev/null && echo "[OK] Elasticsearch running on port 9090" || echo "[ERROR] Elasticsearch DOWN"
+                                curl -s http://localhost:9091 > /dev/null && echo "[OK] Metrics Exporter running on port 9091" || echo "[ERROR] Metrics Exporter DOWN"
                                 curl -s http://localhost:3001 > /dev/null && echo "[OK] Grafana running on port 3001" || echo "[ERROR] Grafana DOWN"
-                                curl -s http://localhost:9091 > /dev/null && echo "[OK] Prometheus running on port 9091" || echo "[ERROR] Prometheus DOWN"
-                                curl -s http://localhost:8080 > /dev/null && echo "[OK] Jenkins running on port 8080" || echo "[ERROR] Jenkins DOWN"
-                                curl -s http://localhost:9092 > /dev/null && echo "[OK] GitLab running on port 9092" || echo "[ERROR] GitLab DOWN"
+                                curl -s http://localhost:9093 > /dev/null && echo "[OK] Prometheus running on port 9093" || echo "[ERROR] Prometheus DOWN"
+                                curl -s http://localhost:8000 > /dev/null && echo "[OK] API Gateway running on port 8000" || echo "[ERROR] API Gateway DOWN"
+                                curl -s http://localhost:9092 > /dev/null && echo "[OK] Log Aggregator running on port 9092" || echo "[ERROR] Log Aggregator DOWN"
                                 curl -s http://localhost:5000 > /dev/null && echo "[OK] Docker Registry running on port 5000" || echo "[ERROR] Docker Registry DOWN"
                                 curl -s http://localhost:9000 > /dev/null && echo "[OK] Portainer running on port 9000" || echo "[ERROR] Portainer DOWN"
                                 curl -s http://localhost:8200 > /dev/null && echo "[OK] Vault running on port 8200" || echo "[ERROR] Vault DOWN"
