@@ -296,8 +296,8 @@ services:
     image: ${DOCKER_REPO}:portainer
     container_name: portainer-service
     ports:
-      - "9000:9000"
-      - "8002:8000"
+      - "8002:9000"
+      - "8000:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
