@@ -137,7 +137,10 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    build:
+      context: .
+      dockerfile: services/redis/Dockerfile
+    image: ${DOCKER_REPO}:redis
     container_name: redis-service
     ports:
       - "9085:6379"
@@ -146,7 +149,10 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: services/postgres/Dockerfile
+    image: ${DOCKER_REPO}:postgres
     container_name: postgres-service
     ports:
       - "9086:5432"
@@ -159,7 +165,10 @@ services:
     restart: unless-stopped
 
   mongo:
-    image: mongo:7-alpine
+    build:
+      context: .
+      dockerfile: services/mongo/Dockerfile
+    image: ${DOCKER_REPO}:mongo
     container_name: mongo-service
     ports:
       - "9087:27017"
@@ -171,7 +180,10 @@ services:
     restart: unless-stopped
 
   mysql:
-    image: mysql:8-alpine
+    build:
+      context: .
+      dockerfile: services/mysql/Dockerfile
+    image: ${DOCKER_REPO}:mysql
     container_name: mysql-service
     ports:
       - "9088:3306"
@@ -183,7 +195,10 @@ services:
     restart: unless-stopped
 
   rabbitmq:
-    image: rabbitmq:4-alpine
+    build:
+      context: .
+      dockerfile: services/rabbitmq/Dockerfile
+    image: ${DOCKER_REPO}:rabbitmq
     container_name: rabbitmq-service
     ports:
       - "9089:5672"
@@ -196,7 +211,10 @@ services:
     restart: unless-stopped
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    build:
+      context: .
+      dockerfile: services/elasticsearch/Dockerfile
+    image: ${DOCKER_REPO}:elasticsearch
     container_name: elasticsearch-service
     ports:
       - "9090:9200"
@@ -208,7 +226,10 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    build:
+      context: .
+      dockerfile: services/grafana/Dockerfile
+    image: ${DOCKER_REPO}:grafana
     container_name: grafana-service
     ports:
       - "3001:3000"
@@ -220,7 +241,10 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: prom/prometheus:latest
+    build:
+      context: .
+      dockerfile: services/prometheus/Dockerfile
+    image: ${DOCKER_REPO}:prometheus
     container_name: prometheus-service
     ports:
       - "9091:9090"
@@ -229,7 +253,10 @@ services:
     restart: unless-stopped
 
   jenkins:
-    image: jenkins/jenkins:latest-alpine
+    build:
+      context: .
+      dockerfile: services/jenkins/Dockerfile
+    image: ${DOCKER_REPO}:jenkins
     container_name: jenkins-service
     ports:
       - "8080:8080"
@@ -239,7 +266,10 @@ services:
     restart: unless-stopped
 
   gitlab:
-    image: gitlab/gitlab-ce:latest
+    build:
+      context: .
+      dockerfile: services/gitlab/Dockerfile
+    image: ${DOCKER_REPO}:gitlab
     container_name: gitlab-service
     ports:
       - "9092:80"
@@ -250,7 +280,10 @@ services:
     restart: unless-stopped
 
   docker-registry:
-    image: registry:2
+    build:
+      context: .
+      dockerfile: services/docker-registry/Dockerfile
+    image: ${DOCKER_REPO}:docker-registry
     container_name: docker-registry-service
     ports:
       - "5000:5000"
@@ -261,7 +294,10 @@ services:
     restart: unless-stopped
 
   portainer:
-    image: portainer/portainer-ce:latest
+    build:
+      context: .
+      dockerfile: services/portainer/Dockerfile
+    image: ${DOCKER_REPO}:portainer
     container_name: portainer-service
     ports:
       - "9000:9000"
@@ -273,7 +309,10 @@ services:
     restart: unless-stopped
 
   vault:
-    image: vault:latest
+    build:
+      context: .
+      dockerfile: services/vault/Dockerfile
+    image: ${DOCKER_REPO}:vault
     container_name: vault-service
     ports:
       - "8200:8200"
@@ -285,7 +324,10 @@ services:
     restart: unless-stopped
 
   consul:
-    image: consul:latest
+    build:
+      context: .
+      dockerfile: services/consul/Dockerfile
+    image: ${DOCKER_REPO}:consul
     container_name: consul-service
     ports:
       - "8500:8500"
@@ -296,7 +338,10 @@ services:
     restart: unless-stopped
 
   etcd:
-    image: quay.io/coreos/etcd:v3.5.10
+    build:
+      context: .
+      dockerfile: services/etcd/Dockerfile
+    image: ${DOCKER_REPO}:etcd
     container_name: etcd-service
     ports:
       - "2379:2379"
