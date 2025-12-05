@@ -194,7 +194,7 @@ echo "[OK] Services deployed on EC2"
 "@
 
                             # Write to temp file and execute
-                            $tempFile = [System.IO.Path]::GetTempFileName() | Rename-Item -NewName { $_.Name -Replace '\.tmp$', '.sh' } -PassThru
+                            $tempFile = "$env:TEMP\deploy_$(Get-Random).sh"
                             $deployScript | Out-File -FilePath $tempFile -Encoding ASCII -NoNewline
                             
                             cat $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
@@ -261,7 +261,7 @@ curl -s http://localhost:2379 > /dev/null && echo "[OK] etcd running on port 237
 "@
 
                             # Write to temp file and execute
-                            $tempFile = [System.IO.Path]::GetTempFileName() | Rename-Item -NewName { $_.Name -Replace '\.tmp$', '.sh' } -PassThru
+                            $tempFile = "$env:TEMP\verify_$(Get-Random).sh"
                             $verifyScript | Out-File -FilePath $tempFile -Encoding ASCII -NoNewline
                             
                             cat $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
