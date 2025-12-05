@@ -154,39 +154,51 @@ pipeline {
                             
                             Write-Host "[*] Deploying to EC2 at $ec2Ip..."
                             
-                            $script = @'
-                                # Update and install Docker
-                                sudo yum update -y >/dev/null 2>&1
-                                sudo yum install -y docker git >/dev/null 2>&1
-                                sudo systemctl start docker
-                                sudo systemctl enable docker
-                                sudo usermod -aG docker ec2-user
-                                
-                                # Restart docker to apply group changes
-                                sudo systemctl restart docker
-                                sudo newgrp docker
-                                
-                                # Install Docker Compose
-                                sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose >/dev/null 2>&1
-                                sudo chmod +x /usr/local/bin/docker-compose
-                                
-                                # Clone repository
-                                rm -rf ~/5-service-jenkins-pipeline
-                                git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline
-                                cd ~/5-service-jenkins-pipeline
-                                
-                                # Build images using docker-compose (simpler and more reliable)
-                                export DOCKER_REPO=service-pipeline
-                                echo "Building Docker images with docker-compose..."
-                                docker-compose build --no-cache
-                                
-                                # Deploy services
-                                docker-compose down 2>/dev/null || true
-                                docker-compose up -d
-                                
-                                echo "[OK] Services deployed on EC2"
-'@
-                            $script | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
+                            # Create deployment script file to avoid BOM issues
+                            $deployScript = @"
+#!/bin/bash
+set -e
+
+# Update and install Docker
+sudo yum update -y >/dev/null 2>&1
+sudo yum install -y docker git >/dev/null 2>&1
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ec2-user || true
+
+# Restart docker to apply group changes
+sudo systemctl restart docker
+sleep 2
+
+# Install Docker Compose v2
+sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-`$(uname -s)-`$(uname -m)" -o /usr/local/bin/docker-compose >/dev/null 2>&1
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Verify Docker Compose version
+docker-compose --version
+
+# Clone repository
+rm -rf ~/5-service-jenkins-pipeline
+git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline
+cd ~/5-service-jenkins-pipeline
+
+# Build images using docker-compose
+echo "Building Docker images with docker-compose..."
+docker-compose build --no-cache 2>&1 || true
+
+# Deploy services
+docker-compose down 2>/dev/null || true
+docker-compose up -d
+
+echo "[OK] Services deployed on EC2"
+"@
+
+                            # Write to temp file and execute
+                            $tempFile = [System.IO.Path]::GetTempFileName() | Rename-Item -NewName { $_.Name -Replace '\.tmp$', '.sh' } -PassThru
+                            $deployScript | Out-File -FilePath $tempFile -Encoding ASCII -NoNewline
+                            
+                            cat $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
+                            Remove-Item $tempFile -Force
                             
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] EC2 deployment completed"
@@ -218,34 +230,42 @@ pipeline {
                             
                             Write-Host "[*] Checking service status on $ec2Ip..."
                             
-                            $verifyScript = @'
-                                echo "Verifying services..."
-                                docker ps
-                                
-                                # Check services by port
-                                curl -s http://localhost:3000 > /dev/null && echo "[OK] App service running on port 3000" || echo "[ERROR] App service DOWN"
-                                curl -s http://localhost:9080 > /dev/null && echo "[OK] Nginx running on port 9080" || echo "[ERROR] Nginx DOWN"
-                                curl -s http://localhost:9081 > /dev/null && echo "[OK] Apache running on port 9081" || echo "[ERROR] Apache DOWN"
-                                curl -s http://localhost:9082 > /dev/null && echo "[OK] BusyBox running on port 9082" || echo "[ERROR] BusyBox DOWN"
-                                curl -s http://localhost:9083 > /dev/null && echo "[OK] Memcached running on port 9083" || echo "[ERROR] Memcached DOWN"
-                                curl -s http://localhost:9084 > /dev/null && echo "[OK] Alpine running on port 9084" || echo "[ERROR] Alpine DOWN"
-                                curl -s http://localhost:9085 > /dev/null && echo "[OK] Redis running on port 9085" || echo "[ERROR] Redis DOWN"
-                                curl -s http://localhost:9086 > /dev/null && echo "[OK] PostgreSQL running on port 9086" || echo "[ERROR] PostgreSQL DOWN"
-                                curl -s http://localhost:9087 > /dev/null && echo "[OK] MongoDB running on port 9087" || echo "[ERROR] MongoDB DOWN"
-                                curl -s http://localhost:9088 > /dev/null && echo "[OK] MySQL running on port 9088" || echo "[ERROR] MySQL DOWN"
-                                curl -s http://localhost:9089 > /dev/null && echo "[OK] RabbitMQ running on port 9089" || echo "[ERROR] RabbitMQ DOWN"
-                                curl -s http://localhost:9091 > /dev/null && echo "[OK] Metrics Exporter running on port 9091" || echo "[ERROR] Metrics Exporter DOWN"
-                                curl -s http://localhost:3001 > /dev/null && echo "[OK] Grafana running on port 3001" || echo "[ERROR] Grafana DOWN"
-                                curl -s http://localhost:9093 > /dev/null && echo "[OK] Prometheus running on port 9093" || echo "[ERROR] Prometheus DOWN"
-                                curl -s http://localhost:8000 > /dev/null && echo "[OK] API Gateway running on port 8000" || echo "[ERROR] API Gateway DOWN"
-                                curl -s http://localhost:9092 > /dev/null && echo "[OK] Log Aggregator running on port 9092" || echo "[ERROR] Log Aggregator DOWN"
-                                curl -s http://localhost:5000 > /dev/null && echo "[OK] Docker Registry running on port 5000" || echo "[ERROR] Docker Registry DOWN"
-                                curl -s http://localhost:9000 > /dev/null && echo "[OK] Portainer running on port 9000" || echo "[ERROR] Portainer DOWN"
-                                curl -s http://localhost:8200 > /dev/null && echo "[OK] Vault running on port 8200" || echo "[ERROR] Vault DOWN"
-                                curl -s http://localhost:8500 > /dev/null && echo "[OK] Consul running on port 8500" || echo "[ERROR] Consul DOWN"
-                                curl -s http://localhost:2379 > /dev/null && echo "[OK] etcd running on port 2379" || echo "[ERROR] etcd DOWN"
-'@
-                            $verifyScript | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
+                            # Create verification script to avoid BOM issues
+                            $verifyScript = @"
+#!/bin/bash
+echo "Verifying services..."
+docker ps
+
+# Check services by port
+curl -s http://localhost:3000 > /dev/null && echo "[OK] App service running on port 3000" || echo "[ERROR] App service DOWN"
+curl -s http://localhost:9080 > /dev/null && echo "[OK] Nginx running on port 9080" || echo "[ERROR] Nginx DOWN"
+curl -s http://localhost:9081 > /dev/null && echo "[OK] Apache running on port 9081" || echo "[ERROR] Apache DOWN"
+curl -s http://localhost:9082 > /dev/null && echo "[OK] BusyBox running on port 9082" || echo "[ERROR] BusyBox DOWN"
+curl -s http://localhost:9083 > /dev/null && echo "[OK] Memcached running on port 9083" || echo "[ERROR] Memcached DOWN"
+curl -s http://localhost:9084 > /dev/null && echo "[OK] Alpine running on port 9084" || echo "[ERROR] Alpine DOWN"
+curl -s http://localhost:9085 > /dev/null && echo "[OK] Redis running on port 9085" || echo "[ERROR] Redis DOWN"
+curl -s http://localhost:9086 > /dev/null && echo "[OK] PostgreSQL running on port 9086" || echo "[ERROR] PostgreSQL DOWN"
+curl -s http://localhost:9087 > /dev/null && echo "[OK] MongoDB running on port 9087" || echo "[ERROR] MongoDB DOWN"
+curl -s http://localhost:9088 > /dev/null && echo "[OK] MySQL running on port 9088" || echo "[ERROR] MySQL DOWN"
+curl -s http://localhost:9089 > /dev/null && echo "[OK] RabbitMQ running on port 9089" || echo "[ERROR] RabbitMQ DOWN"
+curl -s http://localhost:9091 > /dev/null && echo "[OK] Metrics Exporter running on port 9091" || echo "[ERROR] Metrics Exporter DOWN"
+curl -s http://localhost:3001 > /dev/null && echo "[OK] Grafana running on port 3001" || echo "[ERROR] Grafana DOWN"
+curl -s http://localhost:9093 > /dev/null && echo "[OK] Prometheus running on port 9093" || echo "[ERROR] Prometheus DOWN"
+curl -s http://localhost:8000 > /dev/null && echo "[OK] API Gateway running on port 8000" || echo "[ERROR] API Gateway DOWN"
+curl -s http://localhost:9092 > /dev/null && echo "[OK] Log Aggregator running on port 9092" || echo "[ERROR] Log Aggregator DOWN"
+curl -s http://localhost:5000 > /dev/null && echo "[OK] Docker Registry running on port 5000" || echo "[ERROR] Docker Registry DOWN"
+curl -s http://localhost:9000 > /dev/null && echo "[OK] Portainer running on port 9000" || echo "[ERROR] Portainer DOWN"
+curl -s http://localhost:8200 > /dev/null && echo "[OK] Vault running on port 8200" || echo "[ERROR] Vault DOWN"
+curl -s http://localhost:8500 > /dev/null && echo "[OK] Consul running on port 8500" || echo "[ERROR] Consul DOWN"
+curl -s http://localhost:2379 > /dev/null && echo "[OK] etcd running on port 2379" || echo "[ERROR] etcd DOWN"
+"@
+
+                            # Write to temp file and execute
+                            $tempFile = [System.IO.Path]::GetTempFileName() | Rename-Item -NewName { $_.Name -Replace '\.tmp$', '.sh' } -PassThru
+                            $verifyScript | Out-File -FilePath $tempFile -Encoding ASCII -NoNewline
+                            
+                            cat $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
+                            Remove-Item $tempFile -Force
                         '''
                     }
                 }
