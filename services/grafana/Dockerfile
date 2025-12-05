@@ -1,0 +1,5 @@
+FROM grafana/grafana:latest
+ENV GF_SECURITY_ADMIN_PASSWORD=admin
+ENV GF_USERS_ALLOW_SIGN_UP=false
+EXPOSE 3001
+CMD ["./bin/grafana-server"]

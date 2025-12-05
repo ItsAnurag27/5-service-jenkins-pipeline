@@ -1,0 +1,5 @@
+FROM rabbitmq:4-alpine
+ENV RABBITMQ_DEFAULT_USER=guest
+ENV RABBITMQ_DEFAULT_PASS=guest
+EXPOSE 5672 15672
+CMD ["rabbitmq-server"]

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>5-Service Jenkins Pipeline</title>
+    <title>20-Service Jenkins Pipeline</title>
     <style>
         * {
             margin: 0;
@@ -184,7 +184,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 5-Service Jenkins Pipeline</h1>
+            <h1>🚀 20-Service Jenkins Pipeline</h1>
             <p>Docker Microservices with CI/CD Automation</p>
             <div class="status">
                 <div class="pulse"></div>
@@ -231,6 +231,134 @@
                 <div class="service-port">Port: 3000</div>
                 <p>Python application service running HTTP server with container support</p>
                 <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('app')); return false;">Access App</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🏔️</div>
+                <h2>Alpine</h2>
+                <div class="service-port">Port: 9084</div>
+                <p>Lightweight Linux distribution with nginx web server</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('alpine')); return false;">Access Alpine</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">⚡</div>
+                <h2>Redis</h2>
+                <div class="service-port">Port: 9085</div>
+                <p>In-memory data structure store for caching and real-time applications</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('redis')); return false;">Access Redis</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🐘</div>
+                <h2>PostgreSQL</h2>
+                <div class="service-port">Port: 9086</div>
+                <p>Advanced open-source relational database with powerful features</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('postgres')); return false;">Access PostgreSQL</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🍃</div>
+                <h2>MongoDB</h2>
+                <div class="service-port">Port: 9087</div>
+                <p>NoSQL document database for flexible, scalable data storage</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('mongo')); return false;">Access MongoDB</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🐬</div>
+                <h2>MySQL</h2>
+                <div class="service-port">Port: 9088</div>
+                <p>Reliable relational database management system</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('mysql')); return false;">Access MySQL</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🐰</div>
+                <h2>RabbitMQ</h2>
+                <div class="service-port">Port: 9089</div>
+                <p>Message broker for reliable and scalable distributed messaging</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('rabbitmq')); return false;">Access RabbitMQ</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🔎</div>
+                <h2>Elasticsearch</h2>
+                <div class="service-port">Port: 9090</div>
+                <p>Search and analytics engine for real-time data insights</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('elasticsearch')); return false;">Access Elasticsearch</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">📊</div>
+                <h2>Grafana</h2>
+                <div class="service-port">Port: 3001</div>
+                <p>Visualization platform for monitoring and observability</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('grafana')); return false;">Access Grafana</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">📈</div>
+                <h2>Prometheus</h2>
+                <div class="service-port">Port: 9091</div>
+                <p>Time-series database for metrics and monitoring</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('prometheus')); return false;">Access Prometheus</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🔨</div>
+                <h2>Jenkins</h2>
+                <div class="service-port">Port: 8080</div>
+                <p>Automation server for CI/CD pipeline orchestration</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('jenkins')); return false;">Access Jenkins</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🦊</div>
+                <h2>GitLab</h2>
+                <div class="service-port">Port: 9092</div>
+                <p>DevOps platform for source code management and CI/CD</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('gitlab')); return false;">Access GitLab</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">📦</div>
+                <h2>Docker Registry</h2>
+                <div class="service-port">Port: 5000</div>
+                <p>Private Docker image repository for container storage</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('docker_registry')); return false;">Access Registry</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">⛵</div>
+                <h2>Portainer</h2>
+                <div class="service-port">Port: 9000</div>
+                <p>Container management GUI for simplified Docker administration</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('portainer')); return false;">Access Portainer</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🔐</div>
+                <h2>Vault</h2>
+                <div class="service-port">Port: 8200</div>
+                <p>Secrets management system for secure credential storage</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('vault')); return false;">Access Vault</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🌐</div>
+                <h2>Consul</h2>
+                <div class="service-port">Port: 8500</div>
+                <p>Service mesh and discovery platform for microservices</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('consul')); return false;">Access Consul</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🗝️</div>
+                <h2>etcd</h2>
+                <div class="service-port">Port: 2379</div>
+                <p>Distributed key-value store for configuration and coordination</p>
+                <a href="#" class="service-link" onclick="window.open(CONFIG.getServiceUrl('etcd')); return false;">Access etcd</a>
             </div>
         </div>
 

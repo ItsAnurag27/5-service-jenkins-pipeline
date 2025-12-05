@@ -43,6 +43,8 @@ pipeline {
                 powershell '''
                     $repo = $env:DOCKER_REPO
                     $tag = $env:IMAGE_TAG
+                    
+                    # Original 5 services
                     docker tag "${repo}:nginx" "${repo}:nginx-${tag}"
                     docker tag "${repo}:nginx" "${repo}:nginx-latest"
                     docker tag "${repo}:httpd" "${repo}:httpd-${tag}"
@@ -53,6 +55,38 @@ pipeline {
                     docker tag "${repo}:memcached" "${repo}:memcached-latest"
                     docker tag "${repo}:app" "${repo}:app-${tag}"
                     docker tag "${repo}:app" "${repo}:app-latest"
+                    
+                    # New 15 services
+                    docker tag "${repo}:alpine" "${repo}:alpine-${tag}"
+                    docker tag "${repo}:alpine" "${repo}:alpine-latest"
+                    docker tag "${repo}:redis" "${repo}:redis-${tag}"
+                    docker tag "${repo}:redis" "${repo}:redis-latest"
+                    docker tag "${repo}:postgres" "${repo}:postgres-${tag}"
+                    docker tag "${repo}:postgres" "${repo}:postgres-latest"
+                    docker tag "${repo}:mongo" "${repo}:mongo-${tag}"
+                    docker tag "${repo}:mongo" "${repo}:mongo-latest"
+                    docker tag "${repo}:mysql" "${repo}:mysql-${tag}"
+                    docker tag "${repo}:mysql" "${repo}:mysql-latest"
+                    docker tag "${repo}:rabbitmq" "${repo}:rabbitmq-${tag}"
+                    docker tag "${repo}:rabbitmq" "${repo}:rabbitmq-latest"
+                    docker tag "${repo}:elasticsearch" "${repo}:elasticsearch-${tag}"
+                    docker tag "${repo}:elasticsearch" "${repo}:elasticsearch-latest"
+                    docker tag "${repo}:grafana" "${repo}:grafana-${tag}"
+                    docker tag "${repo}:grafana" "${repo}:grafana-latest"
+                    docker tag "${repo}:prometheus" "${repo}:prometheus-${tag}"
+                    docker tag "${repo}:prometheus" "${repo}:prometheus-latest"
+                    docker tag "${repo}:jenkins" "${repo}:jenkins-${tag}"
+                    docker tag "${repo}:jenkins" "${repo}:jenkins-latest"
+                    docker tag "${repo}:gitlab" "${repo}:gitlab-${tag}"
+                    docker tag "${repo}:gitlab" "${repo}:gitlab-latest"
+                    docker tag "${repo}:docker-registry" "${repo}:docker-registry-${tag}"
+                    docker tag "${repo}:docker-registry" "${repo}:docker-registry-latest"
+                    docker tag "${repo}:portainer" "${repo}:portainer-${tag}"
+                    docker tag "${repo}:portainer" "${repo}:portainer-latest"
+                    docker tag "${repo}:vault" "${repo}:vault-${tag}"
+                    docker tag "${repo}:vault" "${repo}:vault-latest"
+                    docker tag "${repo}:etcd" "${repo}:etcd-${tag}"
+                    docker tag "${repo}:etcd" "${repo}:etcd-latest"
                 '''
             }
         }
@@ -149,6 +183,21 @@ pipeline {
                                 docker build -f services/app/Dockerfile -t $DOCKER_REPO:app .
                                 docker build -f services/busybox/Dockerfile -t $DOCKER_REPO:busybox .
                                 docker build -f services/memcached/Dockerfile -t $DOCKER_REPO:memcached .
+                                docker build -f services/alpine/Dockerfile -t $DOCKER_REPO:alpine .
+                                docker build -f services/redis/Dockerfile -t $DOCKER_REPO:redis .
+                                docker build -f services/postgres/Dockerfile -t $DOCKER_REPO:postgres .
+                                docker build -f services/mongo/Dockerfile -t $DOCKER_REPO:mongo .
+                                docker build -f services/mysql/Dockerfile -t $DOCKER_REPO:mysql .
+                                docker build -f services/rabbitmq/Dockerfile -t $DOCKER_REPO:rabbitmq .
+                                docker build -f services/elasticsearch/Dockerfile -t $DOCKER_REPO:elasticsearch .
+                                docker build -f services/grafana/Dockerfile -t $DOCKER_REPO:grafana .
+                                docker build -f services/prometheus/Dockerfile -t $DOCKER_REPO:prometheus .
+                                docker build -f services/jenkins/Dockerfile -t $DOCKER_REPO:jenkins .
+                                docker build -f services/gitlab/Dockerfile -t $DOCKER_REPO:gitlab .
+                                docker build -f services/docker-registry/Dockerfile -t $DOCKER_REPO:docker-registry .
+                                docker build -f services/portainer/Dockerfile -t $DOCKER_REPO:portainer .
+                                docker build -f services/vault/Dockerfile -t $DOCKER_REPO:vault .
+                                docker build -f services/etcd/Dockerfile -t $DOCKER_REPO:etcd .
                                 
                                 # Deploy services
                                 docker-compose down 2>/dev/null || true
@@ -196,6 +245,22 @@ pipeline {
                                 curl -s http://localhost:9081 > /dev/null && echo "[OK] Apache running on port 9081" || echo "[ERROR] Apache DOWN"
                                 curl -s http://localhost:9082 > /dev/null && echo "[OK] BusyBox running on port 9082" || echo "[ERROR] BusyBox DOWN"
                                 curl -s http://localhost:9083 > /dev/null && echo "[OK] Memcached running on port 9083" || echo "[ERROR] Memcached DOWN"
+                                curl -s http://localhost:9084 > /dev/null && echo "[OK] Alpine running on port 9084" || echo "[ERROR] Alpine DOWN"
+                                curl -s http://localhost:9085 > /dev/null && echo "[OK] Redis running on port 9085" || echo "[ERROR] Redis DOWN"
+                                curl -s http://localhost:9086 > /dev/null && echo "[OK] PostgreSQL running on port 9086" || echo "[ERROR] PostgreSQL DOWN"
+                                curl -s http://localhost:9087 > /dev/null && echo "[OK] MongoDB running on port 9087" || echo "[ERROR] MongoDB DOWN"
+                                curl -s http://localhost:9088 > /dev/null && echo "[OK] MySQL running on port 9088" || echo "[ERROR] MySQL DOWN"
+                                curl -s http://localhost:9089 > /dev/null && echo "[OK] RabbitMQ running on port 9089" || echo "[ERROR] RabbitMQ DOWN"
+                                curl -s http://localhost:9090 > /dev/null && echo "[OK] Elasticsearch running on port 9090" || echo "[ERROR] Elasticsearch DOWN"
+                                curl -s http://localhost:3001 > /dev/null && echo "[OK] Grafana running on port 3001" || echo "[ERROR] Grafana DOWN"
+                                curl -s http://localhost:9091 > /dev/null && echo "[OK] Prometheus running on port 9091" || echo "[ERROR] Prometheus DOWN"
+                                curl -s http://localhost:8080 > /dev/null && echo "[OK] Jenkins running on port 8080" || echo "[ERROR] Jenkins DOWN"
+                                curl -s http://localhost:9092 > /dev/null && echo "[OK] GitLab running on port 9092" || echo "[ERROR] GitLab DOWN"
+                                curl -s http://localhost:5000 > /dev/null && echo "[OK] Docker Registry running on port 5000" || echo "[ERROR] Docker Registry DOWN"
+                                curl -s http://localhost:9000 > /dev/null && echo "[OK] Portainer running on port 9000" || echo "[ERROR] Portainer DOWN"
+                                curl -s http://localhost:8200 > /dev/null && echo "[OK] Vault running on port 8200" || echo "[ERROR] Vault DOWN"
+                                curl -s http://localhost:8500 > /dev/null && echo "[OK] Consul running on port 8500" || echo "[ERROR] Consul DOWN"
+                                curl -s http://localhost:2379 > /dev/null && echo "[OK] etcd running on port 2379" || echo "[ERROR] etcd DOWN"
 '@
                             $verifyScript | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                         '''

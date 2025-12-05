@@ -10,7 +10,23 @@ const CONFIG = {
         APACHE: 9081,
         BUSYBOX: 9082,
         MEMCACHED: 9083,
-        APP: 3000
+        APP: 3000,
+        ALPINE: 9084,
+        REDIS: 9085,
+        POSTGRES: 9086,
+        MONGO: 9087,
+        MYSQL: 9088,
+        RABBITMQ: 9089,
+        ELASTICSEARCH: 9090,
+        GRAFANA: 3001,
+        PROMETHEUS: 9091,
+        JENKINS: 8080,
+        GITLAB: 9092,
+        DOCKER_REGISTRY: 5000,
+        PORTAINER: 9000,
+        VAULT: 8200,
+        CONSUL: 8500,
+        ETCD: 2379
     },
     
     // Get service URL
