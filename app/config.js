@@ -20,10 +20,10 @@ const CONFIG = {
         ELASTICSEARCH: 9091,
         GRAFANA: 3001,
         PROMETHEUS: 9093,
-        JENKINS: 8000,
+        JENKINS: 8001,
         GITLAB: 9092,
         DOCKER_REGISTRY: 5000,
-        PORTAINER: 9000,
+        PORTAINER: 8002,
         VAULT: 8200,
         CONSUL: 8500,
         ETCD: 2379
