@@ -1,4 +1,4 @@
-FROM mysql:8-alpine
+FROM mysql:latest
 ENV MYSQL_ROOT_PASSWORD=admin123
 ENV MYSQL_DATABASE=mydb
 EXPOSE 3306
