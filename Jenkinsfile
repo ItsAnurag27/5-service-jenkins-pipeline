@@ -33,7 +33,27 @@ pipeline {
         stage('Build Images') {
             steps {
                 echo 'Building Docker images...'
-                powershell 'docker-compose build'
+                retry(3) {
+                    powershell '''
+                        $retryCount = 0
+                        $maxRetries = 2
+                        
+                        do {
+                            try {
+                                docker-compose build
+                                exit 0
+                            } catch {
+                                $retryCount++
+                                if ($retryCount -le $maxRetries) {
+                                    Write-Host "[RETRY] Build failed, attempt $retryCount/$maxRetries. Waiting 10 seconds..."
+                                    Start-Sleep -Seconds 10
+                                } else {
+                                    throw $_
+                                }
+                            }
+                        } while ($retryCount -le $maxRetries)
+                    '''
+                }
             }
         }
 
