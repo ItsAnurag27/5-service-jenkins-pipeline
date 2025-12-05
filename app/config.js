@@ -17,7 +17,6 @@ const CONFIG = {
         MONGO: 9087,
         MYSQL: 9088,
         RABBITMQ: 9089,
-        ELASTICSEARCH: 9091,
         GRAFANA: 3001,
         PROMETHEUS: 9093,
         JENKINS: 8001,

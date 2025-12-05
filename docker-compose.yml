@@ -210,18 +210,6 @@ services:
       - service-network
     restart: unless-stopped
 
-  elasticsearch:
-    build:
-      context: .
-      dockerfile: services/elasticsearch/Dockerfile
-    image: ${DOCKER_REPO}:elasticsearch
-    container_name: elasticsearch-service
-    ports:
-      - "9091:9091"
-    networks:
-      - service-network
-    restart: unless-stopped
-
   grafana:
     build:
       context: .
