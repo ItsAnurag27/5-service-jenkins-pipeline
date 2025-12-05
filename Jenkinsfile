@@ -152,61 +152,56 @@ pipeline {
                             
                             Write-Host "[*] Deploying to EC2 at $ec2Ip..."
                             
-                            # Create deployment script file with LF line endings only
-                            $deployScript = @"
-#!/bin/bash
-set -e
-
-# Update and install Docker
-sudo yum update -y >/dev/null 2>&1
-sudo yum install -y docker git >/dev/null 2>&1
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# Add ec2-user to docker group and apply immediately
-sudo usermod -aG docker ec2-user
-
-# Install Docker Compose v2
-sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-`$(uname -s)-`$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# Verify Docker Compose version
-docker-compose --version
-
-# Clone repository
-rm -rf ~/5-service-jenkins-pipeline
-git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline
-cd ~/5-service-jenkins-pipeline
-
-# Deploy services using newgrp to apply docker group
-newgrp docker << 'DOCKER_EOF'
-  # Wait for docker daemon
-  sleep 2
-  
-  # Verify docker access
-  docker ps > /dev/null
-  
-  # Deploy services
-  docker-compose down 2>/dev/null || true
-  docker-compose up -d
-
-  echo "[OK] Services deployed on EC2"
-DOCKER_EOF
-
-"@
-
-                            # Write deployment script as pure LF with no BOM
+                            # Create deployment script using array of lines - avoids heredoc CRLF issues
+                            $deployLines = @(
+                                "#!/bin/bash"
+                                "set -e"
+                                ""
+                                "# Update and install Docker"
+                                "sudo yum update -y >/dev/null 2>&1"
+                                "sudo yum install -y docker git >/dev/null 2>&1"
+                                "sudo systemctl start docker"
+                                "sudo systemctl enable docker"
+                                ""
+                                "# Add ec2-user to docker group"
+                                "sudo usermod -aG docker ec2-user"
+                                ""
+                                "# Install Docker Compose v2"
+                                "sudo curl -s -L `"https://github.com/docker/compose/releases/latest/download/docker-compose-`$(uname -s)-`$(uname -m)`" -o /usr/local/bin/docker-compose"
+                                "sudo chmod +x /usr/local/bin/docker-compose"
+                                ""
+                                "# Verify Docker Compose version"
+                                "docker-compose --version"
+                                ""
+                                "# Clone repository"
+                                "rm -rf ~/5-service-jenkins-pipeline"
+                                "git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline"
+                                "cd ~/5-service-jenkins-pipeline"
+                                ""
+                                "# Deploy services"
+                                "docker-compose down 2>/dev/null || true"
+                                "docker-compose up -d"
+                                ""
+                                "echo `"[OK] Services deployed on EC2`""
+                            )
+                            
+                            # Join lines with LF only (no CRLF)
+                            $deployScript = $deployLines -join "`n"
+                            
+                            # Write to temp file with UTF8NoBom
                             $tempFile = "$env:TEMP/deploy_$(Get-Random).sh"
-                            $deployScriptLF = $deployScript -replace "`r`n", "`n"
                             $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-                            [System.IO.File]::WriteAllText($tempFile, $deployScriptLF, $utf8NoBom)
+                            [System.IO.File]::WriteAllText($tempFile, $deployScript, $utf8NoBom)
                             
-                            # Convert file to Unix line endings (remove any CRLF that might exist)
-                            $content = [System.IO.File]::ReadAllText($tempFile, [System.Text.Encoding]::UTF8)
-                            $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
-                            [System.IO.File]::WriteAllText($tempFile, $content, $utf8NoBom)
+                            # Double-check: read and verify no CRLF exists
+                            $content = [System.IO.File]::ReadAllText($tempFile)
+                            if ($content -match "`r") {
+                                Write-Host "[WARNING] CRLF detected, removing..."
+                                $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
+                                [System.IO.File]::WriteAllText($tempFile, $content, $utf8NoBom)
+                            }
                             
-                            # Pipe to SSH - file is now guaranteed LF-only, no BOM
+                            # Pipe to SSH
                             Get-Content -Raw $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                             Remove-Item $tempFile -Force
                             
