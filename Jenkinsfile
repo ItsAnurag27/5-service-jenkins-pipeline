@@ -193,12 +193,13 @@ docker-compose up -d
 echo "[OK] Services deployed on EC2"
 "@
 
-                            # Write to temp file with LF line endings only
+                            # Write to temp file with LF line endings only - use SSH input redirection
                             $tempFile = "$env:TEMP/deploy_$(Get-Random).sh"
                             $deployScriptLF = $deployScript -replace "`r`n", "`n"
                             [System.IO.File]::WriteAllText($tempFile, $deployScriptLF, [System.Text.Encoding]::UTF8)
                             
-                            cat $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
+                            # Use SSH input redirection to avoid PowerShell's cat re-adding CRLF
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "bash -s" < $tempFile
                             Remove-Item $tempFile -Force
                             
                             if ($LASTEXITCODE -eq 0) {
@@ -261,12 +262,13 @@ curl -s http://localhost:8500 > /dev/null && echo "[OK] Consul running on port 8
 curl -s http://localhost:2379 > /dev/null && echo "[OK] etcd running on port 2379" || echo "[ERROR] etcd DOWN"
 "@
 
-                            # Write to temp file with LF line endings only
+                            # Write to temp file with LF line endings only - use SSH input redirection
                             $tempFile = "$env:TEMP/verify_$(Get-Random).sh"
                             $verifyScriptLF = $verifyScript -replace "`r`n", "`n"
                             [System.IO.File]::WriteAllText($tempFile, $verifyScriptLF, [System.Text.Encoding]::UTF8)
                             
-                            cat $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
+                            # Use SSH input redirection to avoid PowerShell's cat re-adding CRLF
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "bash -s" < $tempFile
                             Remove-Item $tempFile -Force
                         '''
                     }
