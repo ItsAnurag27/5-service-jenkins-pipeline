@@ -173,7 +173,7 @@ pipeline {
                             Write-Host "[*] Deploying to EC2 at $ec2Ip..."
                             
                             # Use pre-created deploy script from repository (avoids PowerShell encoding issues)
-                            $deployScriptPath = "$PSScriptRoot\scripts\deploy.sh"
+                            $deployScriptPath = "$PSScriptRoot/scripts/deploy.sh"
                             
                             # Read file in UTF-8 without BOM
                             $content = [System.IO.File]::ReadAllText($deployScriptPath, [System.Text.Encoding]::UTF8)
