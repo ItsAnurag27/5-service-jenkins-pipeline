@@ -164,14 +164,12 @@ sudo yum update -y >/dev/null 2>&1
 sudo yum install -y docker git >/dev/null 2>&1
 sudo systemctl start docker
 sudo systemctl enable docker
-sudo usermod -aG docker ec2-user || true
 
-# Restart docker to apply group changes
-sudo systemctl restart docker
-sleep 2
+# Add ec2-user to docker group and apply immediately
+sudo usermod -aG docker ec2-user
 
 # Install Docker Compose v2
-sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-`$(uname -s)-`$(uname -m)" -o /usr/local/bin/docker-compose >/dev/null 2>&1
+sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-`$(uname -s)-`$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
 # Verify Docker Compose version
@@ -182,15 +180,21 @@ rm -rf ~/5-service-jenkins-pipeline
 git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git ~/5-service-jenkins-pipeline
 cd ~/5-service-jenkins-pipeline
 
-# Build images using docker-compose
-echo "Building Docker images with docker-compose..."
-docker-compose build --no-cache 2>&1 || true
+# Deploy services using newgrp to apply docker group
+newgrp docker << 'DOCKER_EOF'
+  # Wait for docker daemon
+  sleep 2
+  
+  # Verify docker access
+  docker ps > /dev/null
+  
+  # Deploy services
+  docker-compose down 2>/dev/null || true
+  docker-compose up -d
 
-# Deploy services
-docker-compose down 2>/dev/null || true
-docker-compose up -d
+  echo "[OK] Services deployed on EC2"
+DOCKER_EOF
 
-echo "[OK] Services deployed on EC2"
 "@
 
                             # Write deployment script as pure LF with no BOM
