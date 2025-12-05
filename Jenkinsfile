@@ -154,7 +154,7 @@ pipeline {
                             
                             Write-Host "[*] Deploying to EC2 at $ec2Ip..."
                             
-                            # Create deployment script file to avoid BOM issues
+                            # Create deployment script file with LF line endings only
                             $deployScript = @"
 #!/bin/bash
 set -e
@@ -193,9 +193,10 @@ docker-compose up -d
 echo "[OK] Services deployed on EC2"
 "@
 
-                            # Write to temp file and execute
+                            # Write to temp file with LF line endings only
                             $tempFile = "$env:TEMP/deploy_$(Get-Random).sh"
-                            $deployScript | Out-File -FilePath $tempFile -Encoding ASCII -NoNewline
+                            $deployScriptLF = $deployScript -replace "`r`n", "`n"
+                            [System.IO.File]::WriteAllText($tempFile, $deployScriptLF, [System.Text.Encoding]::UTF8)
                             
                             cat $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                             Remove-Item $tempFile -Force
@@ -230,7 +231,7 @@ echo "[OK] Services deployed on EC2"
                             
                             Write-Host "[*] Checking service status on $ec2Ip..."
                             
-                            # Create verification script to avoid BOM issues
+                            # Create verification script with LF line endings only
                             $verifyScript = @"
 #!/bin/bash
 echo "Verifying services..."
@@ -260,9 +261,10 @@ curl -s http://localhost:8500 > /dev/null && echo "[OK] Consul running on port 8
 curl -s http://localhost:2379 > /dev/null && echo "[OK] etcd running on port 2379" || echo "[ERROR] etcd DOWN"
 "@
 
-                            # Write to temp file and execute
+                            # Write to temp file with LF line endings only
                             $tempFile = "$env:TEMP/verify_$(Get-Random).sh"
-                            $verifyScript | Out-File -FilePath $tempFile -Encoding ASCII -NoNewline
+                            $verifyScriptLF = $verifyScript -replace "`r`n", "`n"
+                            [System.IO.File]::WriteAllText($tempFile, $verifyScriptLF, [System.Text.Encoding]::UTF8)
                             
                             cat $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                             Remove-Item $tempFile -Force
