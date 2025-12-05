@@ -1,4 +1,4 @@
-FROM rabbitmq:4-alpine
+FROM rabbitmq:3.13-alpine
 ENV RABBITMQ_DEFAULT_USER=guest
 ENV RABBITMQ_DEFAULT_PASS=guest
 EXPOSE 5672 15672
