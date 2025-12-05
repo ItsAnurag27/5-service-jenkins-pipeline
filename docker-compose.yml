@@ -256,7 +256,7 @@ services:
     image: ${DOCKER_REPO}:jenkins
     container_name: jenkins-service
     ports:
-      - "8000:8000"
+      - "8001:8000"
     networks:
       - service-network
     restart: unless-stopped
@@ -297,7 +297,7 @@ services:
     container_name: portainer-service
     ports:
       - "9000:9000"
-      - "8000:8000"
+      - "8002:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
