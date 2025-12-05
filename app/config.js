@@ -19,7 +19,7 @@ const CONFIG = {
         RABBITMQ: 9089,
         ELASTICSEARCH: 9091,
         GRAFANA: 3001,
-        PROMETHEUS: 9091,
+        PROMETHEUS: 9093,
         JENKINS: 8000,
         GITLAB: 9092,
         DOCKER_REGISTRY: 5000,

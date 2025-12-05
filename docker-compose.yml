@@ -244,7 +244,7 @@ services:
     image: ${DOCKER_REPO}:prometheus
     container_name: prometheus-service
     ports:
-      - "9091:9090"
+      - "9093:9090"
     networks:
       - service-network
     restart: unless-stopped
