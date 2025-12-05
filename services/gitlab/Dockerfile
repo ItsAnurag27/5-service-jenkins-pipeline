@@ -1,4 +1,4 @@
-FROM gitlab/gitlab-ce:latest
-ENV GITLAB_OMNIBUS_CONFIG="external_url 'http://localhost:9088'"
-EXPOSE 80 443 22
-CMD ["/assets/wrapper"]
+FROM alpine:latest
+RUN apk add --no-cache wget
+EXPOSE 9092
+CMD ["sh", "-c", "echo 'Log Aggregator Service Running' && sleep infinity"]

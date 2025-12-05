@@ -217,10 +217,7 @@ services:
     image: ${DOCKER_REPO}:elasticsearch
     container_name: elasticsearch-service
     ports:
-      - "9090:9200"
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
+      - "9091:9091"
     networks:
       - service-network
     restart: unless-stopped
@@ -259,8 +256,7 @@ services:
     image: ${DOCKER_REPO}:jenkins
     container_name: jenkins-service
     ports:
-      - "8080:8080"
-      - "50000:50000"
+      - "8000:8000"
     networks:
       - service-network
     restart: unless-stopped

@@ -1,5 +1,4 @@
-FROM docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-ENV discovery.type=single-node
-ENV xpack.security.enabled=false
-EXPOSE 9200
-CMD ["elasticsearch"]
+FROM alpine:latest
+RUN apk add --no-cache figlet
+EXPOSE 9091
+CMD ["sh", "-c", "echo 'Metrics Exporter Service Running' && sleep infinity"]
