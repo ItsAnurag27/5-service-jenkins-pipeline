@@ -173,7 +173,14 @@ pipeline {
                             Write-Host "[*] Deploying to EC2 at $ec2Ip..."
                             
                             # Use pre-created deploy script from repository (avoids PowerShell encoding issues)
-                            $deployScriptPath = "$PSScriptRoot/scripts/deploy.sh"
+                            # Jenkins workspace is available via env:WORKSPACE
+                            $deployScriptPath = "$env:WORKSPACE/scripts/deploy.sh"
+                            
+                            # Verify script exists
+                            if (-not (Test-Path $deployScriptPath)) {
+                                Write-Host "[ERROR] Deploy script not found at $deployScriptPath"
+                                exit 1
+                            }
                             
                             # Read file in UTF-8 without BOM
                             $content = [System.IO.File]::ReadAllText($deployScriptPath, [System.Text.Encoding]::UTF8)
