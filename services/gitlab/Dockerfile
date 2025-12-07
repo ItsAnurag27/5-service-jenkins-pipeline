@@ -1,4 +1,3 @@
-FROM alpine:latest
-RUN apk add --no-cache wget
+FROM gitlab/gitlab-ce:nightly
 EXPOSE 9092
-CMD ["sh", "-c", "echo 'Log Aggregator Service Running' && sleep infinity"]
+CMD ["sh", "-c", "echo 'GitLab Service Running' && sleep infinity"]
