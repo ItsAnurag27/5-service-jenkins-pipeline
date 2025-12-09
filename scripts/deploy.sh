@@ -21,12 +21,17 @@ log "Adding ec2-user to docker group..."
 sudo usermod -aG docker ec2-user
 sudo chmod 666 /var/run/docker.sock
 
-log "Installing Docker Compose..."
-sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+log "Waiting for Docker daemon to be ready..."
+sleep 3
 
-log "Verifying Docker Compose..."
-docker-compose --version
+log "Loading Docker images from tar files..."
+cd /tmp
+for tar_file in *.tar; do
+  if [ -f "$tar_file" ]; then
+    log "Loading image from $tar_file..."
+    docker load -i "$tar_file" || log "[WARNING] Failed to load $tar_file, continuing..."
+  fi
+done
 
 log "Cloning Docker repository..."
 cd ~ || exit 1
