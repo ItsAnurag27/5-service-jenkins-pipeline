@@ -249,15 +249,6 @@ services:
       - service-network
     restart: unless-stopped
 
-  hello-world:
-    image: hello-world:nanoserver-ltsc2025
-    container_name: hello-world-service
-    ports:
-      - "9092:80"
-    networks:
-      - service-network
-    restart: unless-stopped
-
   docker-registry:
     build:
       context: .
