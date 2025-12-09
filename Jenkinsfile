@@ -180,8 +180,9 @@ pipeline {
                             [System.IO.File]::WriteAllText($deployScriptPath, $content, $utf8NoBom)
 
                             Write-Host "[*] Copying deploy.sh to EC2 via scp..."
+                            $scpTarget = "$ec2User@$ec2Ip" + ":/tmp/deploy.sh"
                             & scp -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null `
-                                "$deployScriptPath" "$ec2User@$ec2Ip:/tmp/deploy.sh"
+                                "$deployScriptPath" $scpTarget
 
                             if ($LASTEXITCODE -ne 0) {
                                 Write-Host "[ERROR] scp failed with exit code $LASTEXITCODE"
