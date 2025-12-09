@@ -165,38 +165,7 @@ pipeline {
                             icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
                             Write-Host "[OK] SSH key permissions fixed"
                             
-                            # Save all Docker images to tar files
-                            Write-Host "[*] Saving Docker images to tar files..."
-                            $images = @("nginx", "httpd", "busybox", "memcached", "app", "alpine", "redis", `
-                                       "postgres", "mongo", "mysql", "rabbitmq", "grafana", "prometheus", `
-                                       "jenkins", "docker-registry", "portainer", "vault", "etcd", "consul")
-                            
-                            $imageDir = "$env:WORKSPACE/docker-images"
-                            if (-not (Test-Path $imageDir)) {
-                                New-Item -ItemType Directory -Force -Path $imageDir | Out-Null
-                            }
-                            
-                            foreach ($image in $images) {
-                                $tarFile = "$imageDir/$image.tar"
-                                Write-Host "[*] Saving service-pipeline:$image to $image.tar..."
-                                & docker save -o "$tarFile" "service-pipeline:$image"
-                                if ($LASTEXITCODE -ne 0) {
-                                    Write-Host "[WARN] Failed to save $image.tar, continuing..."
-                                }
-                            }
-                            
-                            Write-Host "[*] Transferring Docker image files to EC2..."
-                            Get-ChildItem $imageDir -Filter "*.tar" | ForEach-Object {
-                                $tarFile = $_.FullName
-                                $fileName = $_.Name
-                                Write-Host "[*] Transferring $fileName..."
-                                $scpTarget = "$ec2User@$ec2Ip" + ":/tmp/$fileName"
-                                & scp -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null `
-                                    "$tarFile" $scpTarget
-                                if ($LASTEXITCODE -ne 0) {
-                                    Write-Host "[WARN] scp transfer of $fileName had exit code $LASTEXITCODE, continuing..."
-                                }
-                            }
+                            Write-Host "[*] Images will be built directly on EC2..."
                             
                             $deployScriptPath = "$env:WORKSPACE/scripts/deploy.sh"
 

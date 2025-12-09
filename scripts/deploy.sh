@@ -24,15 +24,6 @@ sudo chmod 666 /var/run/docker.sock
 log "Waiting for Docker daemon to be ready..."
 sleep 3
 
-log "Loading Docker images from tar files..."
-cd /tmp
-for tar_file in *.tar; do
-  if [ -f "$tar_file" ]; then
-    log "Loading image from $tar_file..."
-    docker load -i "$tar_file" || log "[WARNING] Failed to load $tar_file, continuing..."
-  fi
-done
-
 log "Cloning Docker repository..."
 cd ~ || exit 1
 rm -rf 5-service-jenkins-pipeline 2>/dev/null || true
@@ -41,6 +32,9 @@ git clone https://github.com/ItsAnurag27/5-service-jenkins-pipeline.git
 cd ~/5-service-jenkins-pipeline || exit 1
 
 export DOCKER_REPO="service-pipeline"
+
+log "Building Docker images on EC2..."
+docker-compose build --no-cache
 
 log "Deploying Docker services with docker-compose..."
 docker-compose down 2>/dev/null || true
