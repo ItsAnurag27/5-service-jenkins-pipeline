@@ -189,14 +189,16 @@ pipeline {
                                 $bomLength = 3
                             }
                             
-                            # Extract content bytes without BOM
-                            $contentBytes = @()
-                            for ($i = $bomLength; $i -lt $bytes.Length; $i++) {
-                                $contentBytes += $bytes[$i]
+                            # Write clean bytes to temp file
+                            $tempFile = [System.IO.Path]::GetTempFileName()
+                            try {
+                                $cleanBytes = $bytes[$bomLength..($bytes.Length-1)]
+                                [System.IO.File]::WriteAllBytes($tempFile, $cleanBytes)
+                                # Use ssh stdin to pipe file directly (no PowerShell encoding layer)
+                                & ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "cat > /tmp/deploy.sh && bash /tmp/deploy.sh" < $tempFile
+                            } finally {
+                                Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
                             }
-                            
-                            # Pipe raw bytes directly via SSH (no PowerShell encoding)
-                            $contentBytes | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                             
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] EC2 deployment completed"
