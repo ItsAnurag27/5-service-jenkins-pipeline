@@ -9,9 +9,9 @@ pipeline {
 
     environment {
         DOCKER_REPO = "service-pipeline"
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        EC2_USER = "ec2-user"
-        EC2_IP = "44.215.75.53"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+        EC2_USER   = "ec2-user"
+        EC2_IP     = "44.215.75.53"
     }
 
     stages {
@@ -62,7 +62,7 @@ pipeline {
                 echo 'Tagging images...'
                 powershell '''
                     $repo = $env:DOCKER_REPO
-                    $tag = $env:IMAGE_TAG
+                    $tag  = $env:IMAGE_TAG
                     
                     # Original 5 services
                     docker tag "${repo}:nginx" "${repo}:nginx-${tag}"
@@ -119,11 +119,8 @@ pipeline {
                             
                             Write-Host "[*] Fixing SSH key permissions..."
                             try {
-                                # Remove all inherited permissions
                                 icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
-                                # Grant full control to SYSTEM only
                                 icacls "$sshKey" /grant:r "SYSTEM`:`(F`)" 2>&1 | Out-Null
-                                # Grant full control to Administrators only
                                 icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
                                 Write-Host "[OK] SSH key permissions fixed"
                             } catch {
@@ -158,9 +155,9 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'demo', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
-                            $sshKey = $env:SSH_KEY_FILE
+                            $sshKey  = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
-                            $ec2Ip = $env:EC2_IP
+                            $ec2Ip   = $env:EC2_IP
                             
                             Write-Host "[*] Fixing SSH key permissions..."
                             icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
@@ -168,43 +165,38 @@ pipeline {
                             icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
                             Write-Host "[OK] SSH key permissions fixed"
                             
-                            Write-Host "[*] Deploying to EC2 at $ec2Ip..."
-                            
-                            # Use pre-created deploy script from repository (avoids PowerShell encoding issues)
-                            # Jenkins workspace is available via env:WORKSPACE
                             $deployScriptPath = "$env:WORKSPACE/scripts/deploy.sh"
-                            
-                            # Verify script exists
+
                             if (-not (Test-Path $deployScriptPath)) {
                                 Write-Host "[ERROR] Deploy script not found at $deployScriptPath"
                                 exit 1
                             }
-                            
-                            # Read file as bytes to avoid PowerShell encoding issues
-                            $bytes = [System.IO.File]::ReadAllBytes($deployScriptPath)
-                            
-                            # Remove UTF-8 BOM if present (EF BB BF)
-                            $bomLength = 0
-                            if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
-                                $bomLength = 3
+
+                            # Normalize deploy.sh to UTF-8 (no BOM) and LF
+                            Write-Host "[*] Normalizing deploy.sh line endings..."
+                            $content = Get-Content $deployScriptPath -Raw
+                            $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
+                            $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+                            [System.IO.File]::WriteAllText($deployScriptPath, $content, $utf8NoBom)
+
+                            Write-Host "[*] Copying deploy.sh to EC2 via scp..."
+                            & scp -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null `
+                                "$deployScriptPath" "$ec2User@$ec2Ip:/tmp/deploy.sh"
+
+                            if ($LASTEXITCODE -ne 0) {
+                                Write-Host "[ERROR] scp failed with exit code $LASTEXITCODE"
+                                exit $LASTEXITCODE
                             }
-                            
-                            # Write clean bytes to temp file
-                            $tempFile = [System.IO.Path]::GetTempFileName()
-                            try {
-                                $cleanBytes = $bytes[$bomLength..($bytes.Length-1)]
-                                [System.IO.File]::WriteAllBytes($tempFile, $cleanBytes)
-                                # Pipe file content to SSH using Get-Content
-                                Get-Content $tempFile -Raw -Encoding Byte | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "cat > /tmp/deploy.sh && bash /tmp/deploy.sh"
-                            } finally {
-                                Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
-                            }
-                            
+
+                            Write-Host "[*] Running deploy.sh on EC2..."
+                            & ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null `
+                                "$ec2User@$ec2Ip" "chmod +x /tmp/deploy.sh && bash /tmp/deploy.sh"
+
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] EC2 deployment completed"
                             } else {
                                 Write-Host "[ERROR] EC2 deployment failed (exit code: $LASTEXITCODE)"
-                                exit 1
+                                exit $LASTEXITCODE
                             }
                         '''
                     }
@@ -218,9 +210,9 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'demo', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
-                            $sshKey = $env:SSH_KEY_FILE
+                            $sshKey  = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
-                            $ec2Ip = $env:EC2_IP
+                            $ec2Ip   = $env:EC2_IP
                             
                             Write-Host "[*] Fixing SSH key permissions..."
                             icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
@@ -230,7 +222,6 @@ pipeline {
                             
                             Write-Host "[*] Checking service status on $ec2Ip..."
                             
-                            # Create verification script with LF line endings only
                             $verifyScript = @"
 #!/bin/bash
 echo "Verifying services..."
@@ -259,18 +250,15 @@ curl -s http://localhost:8500 > /dev/null && echo "[OK] Consul running on port 8
 curl -s http://localhost:2379 > /dev/null && echo "[OK] etcd running on port 2379" || echo "[ERROR] etcd DOWN"
 "@
 
-                            # Write verification script as pure LF with no BOM
                             $tempFile = "$env:TEMP/verify_$(Get-Random).sh"
                             $verifyScriptLF = $verifyScript -replace "`r`n", "`n"
-                            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+                            $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
                             [System.IO.File]::WriteAllText($tempFile, $verifyScriptLF, $utf8NoBom)
                             
-                            # Convert file to Unix line endings (remove any CRLF that might exist)
                             $content = [System.IO.File]::ReadAllText($tempFile, [System.Text.Encoding]::UTF8)
                             $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
                             [System.IO.File]::WriteAllText($tempFile, $content, $utf8NoBom)
                             
-                            # Pipe to SSH - file is now guaranteed LF-only, no BOM
                             Get-Content -Raw $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                             Remove-Item $tempFile -Force
                         '''
