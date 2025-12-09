@@ -249,16 +249,11 @@ services:
       - service-network
     restart: unless-stopped
 
-  gitlab:
-    build:
-      context: .
-      dockerfile: services/gitlab/Dockerfile
-    image: ${DOCKER_REPO}:gitlab
-    container_name: gitlab-service
+  hello-world:
+    image: hello-world:nanoserver-ltsc2025
+    container_name: hello-world-service
     ports:
       - "9092:80"
-    environment:
-      - GITLAB_OMNIBUS_CONFIG="external_url 'http://localhost:9092'"
     networks:
       - service-network
     restart: unless-stopped
