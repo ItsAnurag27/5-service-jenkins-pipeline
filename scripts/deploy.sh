@@ -35,12 +35,13 @@ export DOCKER_REPO="service-pipeline"
 
 log "Building Docker images on EC2..."
 # Use docker build directly instead of docker-compose build (requires buildx on older versions)
+# Build context must be repo root so Dockerfiles can reference files like html/, prometheus.yml, app/
 services=("nginx" "httpd" "busybox" "memcached" "app" "alpine" "redis" "postgres" "mongo" "mysql" "rabbitmq" "grafana" "prometheus" "jenkins" "docker-registry" "portainer" "vault" "etcd" "consul")
 
 for service in "${services[@]}"; do
   if [ -d "services/$service" ]; then
     log "Building service-pipeline:$service..."
-    docker build --no-cache -t "${DOCKER_REPO}:${service}" "services/${service}" 2>&1 | tail -5 || log "[WARN] Failed to build $service"
+    docker build --no-cache -t "${DOCKER_REPO}:${service}" -f "services/${service}/Dockerfile" . 2>&1 | tail -5 || log "[WARN] Failed to build $service"
   fi
 done
 
