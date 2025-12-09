@@ -113,7 +113,7 @@ pipeline {
             steps {
                 echo 'Verifying SSH connection to EC2...'
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'demo', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
                             $sshKey = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
@@ -158,7 +158,7 @@ pipeline {
             steps {
                 echo 'Deploying services to EC2...'
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'demo', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
                             $sshKey = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
@@ -207,7 +207,7 @@ pipeline {
             steps {
                 echo 'Verifying EC2 deployment...'
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'demo', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         powershell '''
                             $sshKey = $env:SSH_KEY_FILE
                             $ec2User = $env:EC2_USER
