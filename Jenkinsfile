@@ -183,11 +183,22 @@ pipeline {
                             # Read file in UTF-8 without BOM
                             $content = [System.IO.File]::ReadAllText($deployScriptPath, [System.Text.Encoding]::UTF8)
                             
+                            # Remove BOM if present (UTF-8 BOM is EF BB BF)
+                            if ($content -match '^\xEF\xBB\xBF') {
+                                $content = $content -replace '^\xEF\xBB\xBF', ''
+                            }
+                            
                             # Ensure LF only (strip any CRLF)
                             $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
                             
-                            # Pipe script content directly to SSH bash
-                            $content | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
+                            # Write to temp file with proper encoding, then pipe to SSH
+                            $tempFile = [System.IO.Path]::GetTempFileName()
+                            try {
+                                [System.IO.File]::WriteAllText($tempFile, $content, [System.Text.Encoding]::UTF8)
+                                Get-Content $tempFile -Raw | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
+                            } finally {
+                                Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+                            }
                             
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] EC2 deployment completed"
