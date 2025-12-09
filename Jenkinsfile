@@ -180,13 +180,17 @@ pipeline {
                                 exit 1
                             }
                             
-                            # Read file in UTF-8 without BOM
-                            $content = [System.IO.File]::ReadAllText($deployScriptPath, [System.Text.Encoding]::UTF8)
+                            # Read file as bytes to avoid BOM issues
+                            $bytes = [System.IO.File]::ReadAllBytes($deployScriptPath)
                             
-                            # Remove BOM if present (UTF-8 BOM is EF BB BF)
-                            if ($content -match '^\xEF\xBB\xBF') {
-                                $content = $content -replace '^\xEF\xBB\xBF', ''
+                            # Remove UTF-8 BOM if present (EF BB BF)
+                            $bomLength = 0
+                            if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+                                $bomLength = 3
                             }
+                            
+                            # Decode without BOM
+                            $content = [System.Text.Encoding]::UTF8.GetString($bytes, $bomLength, $bytes.Length - $bomLength)
                             
                             # Ensure LF only (strip any CRLF)
                             $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
