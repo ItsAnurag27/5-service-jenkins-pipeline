@@ -7,7 +7,11 @@ log() {
 
 log "Installing Docker..."
 sudo yum update -y 2>&1 | tail -5 || true
-sudo yum install -y docker git curl 2>&1 | tail -5 || true
+# Use --allowerasing to fix curl conflict
+sudo yum install -y --allowerasing docker git curl 2>&1 | tail -10 || {
+  log "[WARNING] Initial install had issues, retrying..."
+  sudo yum install -y docker git 2>&1 | tail -10 || true
+}
 
 log "Starting Docker service..."
 sudo systemctl start docker
