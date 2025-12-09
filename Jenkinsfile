@@ -180,7 +180,7 @@ pipeline {
                                 exit 1
                             }
                             
-                            # Read file as bytes to avoid BOM issues
+                            # Read file as bytes to avoid PowerShell encoding issues
                             $bytes = [System.IO.File]::ReadAllBytes($deployScriptPath)
                             
                             # Remove UTF-8 BOM if present (EF BB BF)
@@ -189,20 +189,14 @@ pipeline {
                                 $bomLength = 3
                             }
                             
-                            # Decode without BOM
-                            $content = [System.Text.Encoding]::UTF8.GetString($bytes, $bomLength, $bytes.Length - $bomLength)
-                            
-                            # Ensure LF only (strip any CRLF)
-                            $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
-                            
-                            # Write to temp file with proper encoding, then pipe to SSH
-                            $tempFile = [System.IO.Path]::GetTempFileName()
-                            try {
-                                [System.IO.File]::WriteAllText($tempFile, $content, [System.Text.Encoding]::UTF8)
-                                Get-Content $tempFile -Raw | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
-                            } finally {
-                                Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+                            # Extract content bytes without BOM
+                            $contentBytes = @()
+                            for ($i = $bomLength; $i -lt $bytes.Length; $i++) {
+                                $contentBytes += $bytes[$i]
                             }
+                            
+                            # Pipe raw bytes directly via SSH (no PowerShell encoding)
+                            $contentBytes | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
                             
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] EC2 deployment completed"
