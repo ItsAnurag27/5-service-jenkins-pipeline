@@ -11,7 +11,7 @@ pipeline {
         DOCKER_REPO = "service-pipeline"
         IMAGE_TAG = "${BUILD_NUMBER}"
         EC2_USER = "ec2-user"
-        EC2_IP = "34.227.107.245"
+        EC2_IP = "44.215.75.53"
     }
 
     stages {
