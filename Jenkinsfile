@@ -194,8 +194,8 @@ pipeline {
                             try {
                                 $cleanBytes = $bytes[$bomLength..($bytes.Length-1)]
                                 [System.IO.File]::WriteAllBytes($tempFile, $cleanBytes)
-                                # Use ssh stdin to pipe file directly (no PowerShell encoding layer)
-                                & ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "cat > /tmp/deploy.sh && bash /tmp/deploy.sh" < $tempFile
+                                # Pipe file content to SSH using Get-Content
+                                Get-Content $tempFile -Raw -Encoding Byte | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" "cat > /tmp/deploy.sh && bash /tmp/deploy.sh"
                             } finally {
                                 Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
                             }
