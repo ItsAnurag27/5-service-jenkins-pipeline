@@ -6,8 +6,8 @@ log() {
 }
 
 log "Installing Docker..."
-sudo yum update -y >/dev/null 2>&1
-sudo yum install -y docker git curl >/dev/null 2>&1
+sudo yum update -y 2>&1 | tail -5 || true
+sudo yum install -y docker git curl 2>&1 | tail -5 || true
 
 log "Starting Docker service..."
 sudo systemctl start docker
@@ -16,7 +16,6 @@ sudo systemctl enable docker
 log "Adding ec2-user to docker group..."
 sudo usermod -aG docker ec2-user
 sudo chmod 666 /var/run/docker.sock
-newgrp docker
 
 log "Installing Docker Compose..."
 sudo curl -s -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose

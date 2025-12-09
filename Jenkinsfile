@@ -191,12 +191,13 @@ pipeline {
 
                             Write-Host "[*] Running deploy.sh on EC2..."
                             & ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null `
-                                "$ec2User@$ec2Ip" "chmod +x /tmp/deploy.sh && bash /tmp/deploy.sh"
+                                "$ec2User@$ec2Ip" "chmod +x /tmp/deploy.sh && bash -x /tmp/deploy.sh 2>&1"
 
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "[OK] EC2 deployment completed"
                             } else {
                                 Write-Host "[ERROR] EC2 deployment failed (exit code: $LASTEXITCODE)"
+                                Write-Host "[INFO] Check EC2 logs at /tmp/deploy.log"
                                 exit $LASTEXITCODE
                             }
                         '''
