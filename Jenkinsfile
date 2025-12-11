@@ -25,8 +25,8 @@ pipeline {
         stage('Verify') {
             steps {
                 echo 'Verifying environment...'
-                powershell 'docker --version'
-                powershell 'docker-compose --version'
+                sh 'docker --version'
+                sh 'docker-compose --version'
             }
         }
 
@@ -34,24 +34,25 @@ pipeline {
             steps {
                 echo 'Building Docker images...'
                 retry(3) {
-                    powershell '''
-                        $retryCount = 0
-                        $maxRetries = 2
+                    sh '''
+                        set +e
+                        retryCount=0
+                        maxRetries=2
                         
-                        do {
-                            try {
-                                docker-compose build
+                        while [ $retryCount -le $maxRetries ]; do
+                            docker-compose build --no-cache
+                            if [ $? -eq 0 ]; then
                                 exit 0
-                            } catch {
-                                $retryCount++
-                                if ($retryCount -le $maxRetries) {
-                                    Write-Host "[RETRY] Build failed, attempt $retryCount/$maxRetries. Waiting 10 seconds..."
-                                    Start-Sleep -Seconds 10
-                                } else {
-                                    throw $_
-                                }
-                            }
-                        } while ($retryCount -le $maxRetries)
+                            else
+                                retryCount=$((retryCount + 1))
+                                if [ $retryCount -le $maxRetries ]; then
+                                    echo "[RETRY] Build failed, attempt $retryCount/$maxRetries. Waiting 10 seconds..."
+                                    sleep 10
+                                else
+                                    exit 1
+                                fi
+                            fi
+                        done
                     '''
                 }
             }
@@ -60,9 +61,9 @@ pipeline {
         stage('Tag Images') {
             steps {
                 echo 'Tagging images...'
-                powershell '''
-                    $repo = $env:DOCKER_REPO
-                    $tag  = $env:IMAGE_TAG
+                sh '''
+                    repo=$DOCKER_REPO
+                    tag=$IMAGE_TAG
                     
                     # Original 5 services
                     docker tag "${repo}:nginx" "${repo}:nginx-${tag}"
@@ -112,30 +113,22 @@ pipeline {
                 echo 'Verifying SSH connection to EC2...'
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'demo', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
-                        powershell '''
-                            $sshKey = $env:SSH_KEY_FILE
-                            $ec2User = $env:EC2_USER
-                            $ec2Ip = $env:EC2_IP
+                        sh '''
+                            sshKey=$SSH_KEY_FILE
+                            ec2User=$EC2_USER
+                            ec2Ip=$EC2_IP
                             
-                            Write-Host "[*] Fixing SSH key permissions..."
-                            try {
-                                icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
-                                icacls "$sshKey" /grant:r "SYSTEM`:`(F`)" 2>&1 | Out-Null
-                                icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
-                                Write-Host "[OK] SSH key permissions fixed"
-                            } catch {
-                                Write-Host "[WARNING] Could not fix permissions: $_"
-                            }
+                            echo "[*] Setting SSH key permissions..."
+                            chmod 600 "$sshKey"
+                            echo "[OK] SSH key permissions set"
                             
-                            Write-Host "[*] Testing SSH connection to EC2..."
-                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 "$ec2User@$ec2Ip" "echo 'SSH connection successful'; uname -a"
-                            
-                            if ($LASTEXITCODE -eq 0) {
-                                Write-Host "[OK] SSH connection to EC2 verified"
-                            } else {
-                                Write-Host "[ERROR] Failed to connect to EC2 (exit code: $LASTEXITCODE)"
+                            echo "[*] Testing SSH connection to EC2..."
+                            if ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 "$ec2User@$ec2Ip" "echo 'SSH connection successful'; uname -a"; then
+                                echo "[OK] SSH connection to EC2 verified"
+                            else
+                                echo "[ERROR] Failed to connect to EC2 (exit code: $?)"
                                 exit 1
-                            }
+                            fi
                         '''
                     }
                 }
@@ -145,7 +138,7 @@ pipeline {
         stage('Cleanup') {
             steps {
                 echo 'Cleaning up old images...'
-                powershell 'docker image prune -f --filter "until=24h"'
+                sh 'docker image prune -f --filter "until=24h"' || true
             }
         }
 
@@ -154,54 +147,44 @@ pipeline {
                 echo 'Deploying services to EC2...'
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'demo', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
-                        powershell '''
-                            $sshKey  = $env:SSH_KEY_FILE
-                            $ec2User = $env:EC2_USER
-                            $ec2Ip   = $env:EC2_IP
+                        sh '''
+                            sshKey=$SSH_KEY_FILE
+                            ec2User=$EC2_USER
+                            ec2Ip=$EC2_IP
                             
-                            Write-Host "[*] Fixing SSH key permissions..."
-                            icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
-                            icacls "$sshKey" /grant:r "SYSTEM`:`(F`)" 2>&1 | Out-Null
-                            icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
-                            Write-Host "[OK] SSH key permissions fixed"
+                            echo "[*] Setting SSH key permissions..."
+                            chmod 600 "$sshKey"
+                            echo "[OK] SSH key permissions set"
                             
-                            Write-Host "[*] Images will be built directly on EC2..."
+                            echo "[*] Images will be built directly on EC2..."
                             
-                            $deployScriptPath = "$env:WORKSPACE/scripts/deploy.sh"
+                            deployScriptPath="$WORKSPACE/scripts/deploy.sh"
 
-                            if (-not (Test-Path $deployScriptPath)) {
-                                Write-Host "[ERROR] Deploy script not found at $deployScriptPath"
+                            if [ ! -f "$deployScriptPath" ]; then
+                                echo "[ERROR] Deploy script not found at $deployScriptPath"
                                 exit 1
-                            }
+                            fi
 
-                            # Normalize deploy.sh to UTF-8 (no BOM) and LF
-                            Write-Host "[*] Normalizing deploy.sh line endings..."
-                            $content = Get-Content $deployScriptPath -Raw
-                            $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
-                            $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-                            [System.IO.File]::WriteAllText($deployScriptPath, $content, $utf8NoBom)
+                            echo "[*] Copying deploy.sh to EC2 via scp..."
+                            scp -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                                "$deployScriptPath" "$ec2User@$ec2Ip:/tmp/deploy.sh"
 
-                            Write-Host "[*] Copying deploy.sh to EC2 via scp..."
-                            $scpTarget = "$ec2User@$ec2Ip" + ":/tmp/deploy.sh"
-                            & scp -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null `
-                                "$deployScriptPath" $scpTarget
+                            if [ $? -ne 0 ]; then
+                                echo "[ERROR] scp failed with exit code $?"
+                                exit 1
+                            fi
 
-                            if ($LASTEXITCODE -ne 0) {
-                                Write-Host "[ERROR] scp failed with exit code $LASTEXITCODE"
-                                exit $LASTEXITCODE
-                            }
-
-                            Write-Host "[*] Running deploy.sh on EC2..."
-                            & ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null `
+                            echo "[*] Running deploy.sh on EC2..."
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
                                 "$ec2User@$ec2Ip" "chmod +x /tmp/deploy.sh && bash -x /tmp/deploy.sh 2>&1"
 
-                            if ($LASTEXITCODE -eq 0) {
-                                Write-Host "[OK] EC2 deployment completed"
-                            } else {
-                                Write-Host "[ERROR] EC2 deployment failed (exit code: $LASTEXITCODE)"
-                                Write-Host "[INFO] Check EC2 logs at /tmp/deploy.log"
-                                exit $LASTEXITCODE
-                            }
+                            if [ $? -eq 0 ]; then
+                                echo "[OK] EC2 deployment completed"
+                            else
+                                echo "[ERROR] EC2 deployment failed (exit code: $?)"
+                                echo "[INFO] Check EC2 logs at /tmp/deploy.log"
+                                exit 1
+                            fi
                         '''
                     }
                 }
@@ -213,20 +196,18 @@ pipeline {
                 echo 'Verifying EC2 deployment...'
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'demo', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
-                        powershell '''
-                            $sshKey  = $env:SSH_KEY_FILE
-                            $ec2User = $env:EC2_USER
-                            $ec2Ip   = $env:EC2_IP
+                        sh '''
+                            sshKey=$SSH_KEY_FILE
+                            ec2User=$EC2_USER
+                            ec2Ip=$EC2_IP
                             
-                            Write-Host "[*] Fixing SSH key permissions..."
-                            icacls "$sshKey" /inheritance:r 2>&1 | Out-Null
-                            icacls "$sshKey" /grant:r "SYSTEM`:`(F`)" 2>&1 | Out-Null
-                            icacls "$sshKey" /grant:r "Administrators`:`(F`)" 2>&1 | Out-Null
-                            Write-Host "[OK] SSH key permissions fixed"
+                            echo "[*] Setting SSH key permissions..."
+                            chmod 600 "$sshKey"
+                            echo "[OK] SSH key permissions set"
                             
-                            Write-Host "[*] Checking service status on $ec2Ip..."
+                            echo "[*] Checking service status on $ec2Ip..."
                             
-                            $verifyScript = @"
+                            ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash << 'VERIFY_SCRIPT'
 #!/bin/bash
 echo "Verifying services..."
 docker ps
@@ -252,19 +233,7 @@ curl -s http://localhost:8002 > /dev/null && echo "[OK] Portainer running on por
 curl -s http://localhost:8200 > /dev/null && echo "[OK] Vault running on port 8200" || echo "[ERROR] Vault DOWN"
 curl -s http://localhost:8500 > /dev/null && echo "[OK] Consul running on port 8500" || echo "[ERROR] Consul DOWN"
 curl -s http://localhost:2379 > /dev/null && echo "[OK] etcd running on port 2379" || echo "[ERROR] etcd DOWN"
-"@
-
-                            $tempFile = "$env:TEMP/verify_$(Get-Random).sh"
-                            $verifyScriptLF = $verifyScript -replace "`r`n", "`n"
-                            $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-                            [System.IO.File]::WriteAllText($tempFile, $verifyScriptLF, $utf8NoBom)
-                            
-                            $content = [System.IO.File]::ReadAllText($tempFile, [System.Text.Encoding]::UTF8)
-                            $content = $content -replace "`r`n", "`n" -replace "`r", "`n"
-                            [System.IO.File]::WriteAllText($tempFile, $content, $utf8NoBom)
-                            
-                            Get-Content -Raw $tempFile | ssh -i "$sshKey" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ec2User@$ec2Ip" bash
-                            Remove-Item $tempFile -Force
+VERIFY_SCRIPT
                         '''
                     }
                 }
